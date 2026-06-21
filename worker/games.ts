@@ -24,6 +24,7 @@ export async function handleGames(request: Request, env: Env): Promise<Response>
 
   if (request.method === 'GET' && sub === '') return getGame(code, env)
   if (request.method === 'POST' && sub === '/join') return joinGame(code, env, session)
+  if (request.method === 'POST' && sub === '/add-bot') return addBot(code, env, session)
   if (request.method === 'POST' && sub === '/start') return startGame(code, env, session)
   if (request.method === 'GET' && sub === '/ws') return upgradeWebSocket(code, request, env, session)
   if (request.method === 'POST' && sub === '/prompt') return submitPrompt(code, request, env, session)
@@ -58,6 +59,7 @@ async function getGame(code: string, env: Env): Promise<Response> {
     SELECT u.id, u.display_name, gp.color FROM game_players gp
     JOIN users u ON u.id = gp.user_id
     WHERE gp.game_code = ?
+    ORDER BY gp.joined_at ASC
   `).bind(code).all<{ id: string; display_name: string; color: string }>()
   return json({ game, players: players.results })
 }
@@ -79,6 +81,39 @@ async function joinGame(code: string, env: Env, session: SessionPayload): Promis
   `).bind(code, session.userId, Date.now()).run()
 
   return json({ code })
+}
+
+async function addBot(code: string, env: Env, session: SessionPayload): Promise<Response> {
+  const game = await env.DB.prepare('SELECT * FROM games WHERE code = ?').bind(code).first<{ status: string; host_id: string }>()
+  if (!game) return error('Game not found', 404)
+  if (game.host_id !== session.userId) return error('Only the host can add a bot', 403)
+  if (game.status !== 'lobby') return error('Game already started', 409)
+
+  const players = await env.DB.prepare('SELECT user_id FROM game_players WHERE game_code = ?').bind(code).all()
+  if (players.results.length >= 2) return error('Game is full', 409)
+
+  // Ensure the bot user exists in the users table
+  await env.DB.prepare(`
+    INSERT INTO users (id, email, display_name, created_at)
+    VALUES ('bot', 'bot@primordial', 'CPU', 0)
+    ON CONFLICT(id) DO NOTHING
+  `).run()
+
+  await env.DB.prepare(`
+    INSERT INTO game_players (game_code, user_id, color, joined_at)
+    VALUES (?, 'bot', 'red', ?)
+  `).bind(code, Date.now()).run()
+
+  // Auto-start
+  await env.DB.prepare("UPDATE games SET status = 'active' WHERE code = ?").bind(code).run()
+  const id = env.GAME_ROOM.idFromName(code)
+  const stub = env.GAME_ROOM.get(id)
+  await stub.fetch(new Request('http://do/init', {
+    method: 'POST',
+    body: JSON.stringify({ code, settings: game }),
+  }))
+
+  return json({ started: true })
 }
 
 async function startGame(code: string, env: Env, session: SessionPayload): Promise<Response> {

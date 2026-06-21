@@ -48,6 +48,18 @@ export default function WaitingRoom() {
 
   const isHost = players[0]?.userId === user?.userId
 
+  async function addBot() {
+    setError('')
+    try {
+      const res = await fetch(`/api/games/${code}/add-bot`, { method: 'POST', credentials: 'include' })
+      const data = await res.json() as { started?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      navigate(`/game/${code}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   async function startGame() {
     setStarting(true)
     setError('')
@@ -102,13 +114,20 @@ export default function WaitingRoom() {
         </div>
 
         {isHost && (
-          <button
-            style={{ ...s.primaryButton, width: '100%', opacity: players.length < 2 ? 0.4 : 1 }}
-            onClick={startGame}
-            disabled={players.length < 2 || starting}
-          >
-            {starting ? 'Starting...' : 'Start Game'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {players.length < 2 && (
+              <button style={{ ...s.primaryButton, width: '100%' }} onClick={addBot}>
+                Play vs Computer
+              </button>
+            )}
+            <button
+              style={{ ...s.ghostButton, width: '100%', opacity: players.length < 2 ? 0.4 : 1 }}
+              onClick={startGame}
+              disabled={players.length < 2 || starting}
+            >
+              {starting ? 'Starting...' : 'Start with Friend'}
+            </button>
+          </div>
         )}
         {!isHost && (
           <p style={{ color: '#3a5a7a', fontSize: 13 }}>Waiting for host to start...</p>
