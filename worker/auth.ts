@@ -16,6 +16,7 @@ export async function handleAuth(request: Request, env: Env): Promise<Response> 
   if (url.pathname === '/auth/google/callback') return handleCallback(url, request, env)
   if (url.pathname === '/auth/logout') return handleLogout()
   if (url.pathname === '/auth/me') return handleMe(request, env)
+  if (url.pathname === '/auth/test' && request.method === 'POST') return handleTestLogin(request, env)
 
   return new Response('Not found', { status: 404 })
 }
@@ -116,6 +117,28 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   const session = await verifySession(token, env.SESSION_SECRET)
   if (!session) return new Response(JSON.stringify({ user: null }), { headers: jsonHeaders() })
   return new Response(JSON.stringify({ user: session }), { headers: jsonHeaders() })
+}
+
+async function handleTestLogin(request: Request, env: Env): Promise<Response> {
+  const body = await request.json().catch(() => ({})) as { name?: string }
+  const name = (body.name ?? '').trim().slice(0, 32)
+  if (!name) return new Response(JSON.stringify({ error: 'name required' }), { status: 400, headers: jsonHeaders() })
+
+  // Deterministic user ID from name so the same name rejoins the same account
+  const encoder = new TextEncoder()
+  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(`test:${name.toLowerCase()}`))
+  const userId = `test_${Array.from(new Uint8Array(hash)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('')}`
+
+  await env.DB.prepare(`
+    INSERT INTO users (id, email, display_name, created_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET display_name = excluded.display_name
+  `).bind(userId, `${userId}@test`, name, Date.now()).run()
+
+  const token = await createSession({ userId, email: `${userId}@test`, displayName: name }, env.SESSION_SECRET)
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { 'Content-Type': 'application/json', 'Set-Cookie': sessionCookie(token) },
+  })
 }
 
 function jsonHeaders(): HeadersInit {
