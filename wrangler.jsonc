@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "primordial",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "primordial-db",
+      "database_id": "4069e5aa-eabf-426e-9d18-aa8783f5182d",
+      "migrations_dir": "./migrations"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "987614a932b6410299fe9d6931d39ae1"
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_ROOM",
+        "class_name": "GameRoom"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["GameRoom"]
+    }
+  ],
+
+  "ai": {
+    "binding": "AI"
+  },
+
+  "analytics_engine_datasets": [
+    {
+      "binding": "AE",
+      "dataset": "primordial_events"
+    }
+  ],
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

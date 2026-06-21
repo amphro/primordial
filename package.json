@@ -1,0 +1,33 @@
+{
+  "name": "wraingled",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:worker": "wrangler dev --port 8787",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply primordial-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply primordial-db --remote",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "wrangler": "^4.103.0"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.0"
+  }
+}
