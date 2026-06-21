@@ -40,6 +40,9 @@ export default {
 
     if (url.pathname.startsWith('/api/')) {
       const res = await handleGames(request, env)
+      // WebSocket upgrade responses have the socket handle attached to the Response
+      // object itself — rewrapping with new Response() drops it. Pass through as-is.
+      if (res.status === 101) return res
       return withCors(res, env.ORIGIN)
     }
 

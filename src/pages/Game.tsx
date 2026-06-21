@@ -64,7 +64,7 @@ export default function Game() {
     }
   }, [code, navigate, user?.userId])
 
-  const { connected } = useGameSocket(code, onMessage)
+  const { connected, goneError } = useGameSocket(code, onMessage)
 
   const myPlayer = gameState?.players.find(p => p.userId === user?.userId)
   const myColor  = myPlayer?.color
@@ -189,7 +189,11 @@ export default function Game() {
 
       {/* Prompt input */}
       <div style={{ width: '100%', maxWidth: 520 }}>
-        {myColor && code ? (
+        {goneError ? (
+          <div style={{ color: '#ff6b4a', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
+            This game has ended. <button style={{ color: '#4a9eff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }} onClick={() => navigate('/')}>New game →</button>
+          </div>
+        ) : myColor && code ? (
           <PromptInput
             gameCode={code}
             myColor={myColor}

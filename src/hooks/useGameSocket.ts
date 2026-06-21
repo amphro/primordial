@@ -37,11 +37,13 @@ export type GameMsg =
 interface UseGameSocketResult {
   connected: boolean
   lastMessage: GameMsg | null
+  goneError: boolean  // true when server returned 410 (game finished)
 }
 
 export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg) => void): UseGameSocketResult {
   const [connected, setConnected] = useState(false)
   const [lastMessage, setLastMessage] = useState<GameMsg | null>(null)
+  const [goneError, setGoneError] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
   onMessageRef.current = onMessage
@@ -53,8 +55,16 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
     wsRef.current = ws
 
     ws.onopen  = () => setConnected(true)
-    ws.onclose = () => {
+    ws.onerror = (e) => console.error('[ws] error', e)
+    ws.onclose = (e) => {
       setConnected(false)
+      console.warn('[ws] closed', e.code, e.reason)
+      // Code 1006 = abnormal close (server returned non-101 e.g. 410 Gone)
+      // Don't retry — show a permanent error instead
+      if (e.code === 1006 || e.code === 4010) {
+        setGoneError(true)
+        return
+      }
       setTimeout(connect, 2000)
     }
     ws.onmessage = (event) => {
@@ -74,5 +84,5 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
     }
   }, [connect])
 
-  return { connected, lastMessage }
+  return { connected, lastMessage, goneError }
 }
