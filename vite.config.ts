@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/auth': 'http://localhost:8787',
-      '/api': 'http://localhost:8787',
+      '/api': { target: 'http://localhost:8787', ws: true },
     },
   },
   build: {
