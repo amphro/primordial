@@ -110,14 +110,14 @@ async function addBot(code: string, env: Env, session: SessionPayload): Promise<
   const stub = env.GAME_ROOM.get(id)
   await stub.fetch(new Request('http://do/init', {
     method: 'POST',
-    body: JSON.stringify({ code, settings: game }),
+    body: JSON.stringify({ code, botColor: 'red' }),
   }))
 
   return json({ started: true })
 }
 
 async function startGame(code: string, env: Env, session: SessionPayload): Promise<Response> {
-  const game = await env.DB.prepare('SELECT * FROM games WHERE code = ?').bind(code).first<{ status: string, host_id: string }>()
+  const game = await env.DB.prepare('SELECT * FROM games WHERE code = ?').bind(code).first<{ status: string, host_id: string, settings: string }>()
   if (!game) return error('Game not found', 404)
   if (game.host_id !== session.userId) return error('Only the host can start', 403)
   if (game.status !== 'lobby') return error('Game already started', 409)
@@ -127,12 +127,18 @@ async function startGame(code: string, env: Env, session: SessionPayload): Promi
 
   await env.DB.prepare("UPDATE games SET status = 'active' WHERE code = ?").bind(code).run()
 
+  // Parse per-game settings stored as JSON in D1
+  let gameSettings: Record<string, unknown> = {}
+  try {
+    if (game.settings) gameSettings = JSON.parse(game.settings)
+  } catch { /* use defaults */ }
+
   // Tell the DO to initialize the game
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
   await stub.fetch(new Request(`http://do/init`, {
     method: 'POST',
-    body: JSON.stringify({ code, settings: game }),
+    body: JSON.stringify({ code, gameSettings }),
   }))
 
   return json({ started: true })
@@ -141,7 +147,14 @@ async function startGame(code: string, env: Env, session: SessionPayload): Promi
 async function upgradeWebSocket(code: string, request: Request, env: Env, session: SessionPayload): Promise<Response> {
   const game = await env.DB.prepare('SELECT status FROM games WHERE code = ?').bind(code).first<{ status: string }>()
   if (!game) return error('Game not found', 404)
-  if (game.status === 'finished') return error('Game over', 410)
+  // Don't gate on 'finished' here — let the DO send a game_over message so the client
+  // can navigate to the proper GameOver screen rather than showing a raw error banner.
+
+  // Look up the player's color from D1 so the DO uses the canonical assignment
+  // rather than assigning by connection order (which flips on reconnect).
+  const playerRow = await env.DB.prepare('SELECT color FROM game_players WHERE game_code = ? AND user_id = ?')
+    .bind(code, session.userId).first<{ color: string }>()
+  const playerColor = playerRow?.color ?? ''
 
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
@@ -152,6 +165,7 @@ async function upgradeWebSocket(code: string, request: Request, env: Env, sessio
       ...Object.fromEntries(request.headers),
       'X-User-Id': session.userId,
       'X-Display-Name': session.displayName,
+      'X-Player-Color': playerColor,
     },
     body: request.body,
   })

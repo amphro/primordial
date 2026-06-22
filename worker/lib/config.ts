@@ -57,15 +57,16 @@ export interface GameConfig {
 export const DEFAULT_CONFIG: GameConfig = {
   gridWidth: 40,
   gridHeight: 40,
-  startingCells: 30,
+  startingCells: 6,           // small start — rounds 1-3 are pure growth
 
-  totalRounds: 15,
+  totalRounds: 20,
   promptTimerMs: 20_000,
-  winThresholdPct: 60,
+  winThresholdPct: 100,       // instant win only by full elimination; normally decided by round 20
 
-  startingNutrients: 200,
+  startingNutrients: 120,
   nutrientClusterSize: 8,
-  nutrientRegenByRound: [3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 1, 1, 1, 1, 1],
+  // Higher early (fuel the growth phase), lower late (scarcity drives conflict)
+  nutrientRegenByRound: [4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   nutrientDepletionTtl: 2,
   nutrientCapacity: 4,
 

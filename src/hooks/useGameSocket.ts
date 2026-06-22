@@ -5,20 +5,33 @@ export interface StateMsg {
   phase: 'lobby' | 'active' | 'finished'
   round: number
   totalRounds: number
+  promptTimerMs: number
   scores: { blue: number; red: number }
   cells: { blue: number; red: number }
   promptStatus: { blue: 'locked' | 'waiting'; red: 'locked' | 'waiting' }
   players: Array<{ userId: string; displayName: string; color: 'blue' | 'red' }>
   grid: number[]
   nutrients: number[]
+  armor: number[]
+  starvation: number[]
+  gridW: number
+  gridH: number
   alarmFiresAt: number
+}
+
+export interface PlayerResolve {
+  prompt: string
+  action: string
+  zone: string
+  intensity: string
+  delta: number
 }
 
 export interface ResolveMsg {
   type: 'resolve'
   round: number
-  blue: { prompt: string; action: string; zone: string; intensity: string } | null
-  red:  { prompt: string; action: string; zone: string; intensity: string } | null
+  blue: PlayerResolve | null
+  red:  PlayerResolve | null
 }
 
 export interface GameOverMsg {
@@ -46,6 +59,7 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
   const [goneError, setGoneError] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
+  const closingRef = useRef(false)  // true when we're intentionally closing (unmount/navigate)
   onMessageRef.current = onMessage
 
   const connect = useCallback(() => {
@@ -54,17 +68,24 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
     const ws = new WebSocket(`${protocol}//${location.host}/api/games/${code}/ws`)
     wsRef.current = ws
 
-    ws.onopen  = () => setConnected(true)
+    ws.onopen  = () => {
+      setConnected(true)
+      closingRef.current = false
+    }
     ws.onerror = (e) => console.error('[ws] error', e)
     ws.onclose = (e) => {
       setConnected(false)
-      console.warn('[ws] closed', e.code, e.reason)
-      // Code 1006 = abnormal close (server returned non-101 e.g. 410 Gone)
-      // Don't retry — show a permanent error instead
-      if (e.code === 1006 || e.code === 4010) {
+      console.warn('[ws] closed code=%d reason=%s', e.code, e.reason || '(none)')
+
+      // Don't reconnect on intentional close (component unmounting/navigating away)
+      if (closingRef.current) return
+
+      // Explicit server game-over close
+      if (e.code === 4010 || e.code === 4410) {
         setGoneError(true)
         return
       }
+
       setTimeout(connect, 2000)
     }
     ws.onmessage = (event) => {
@@ -77,8 +98,10 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
   }, [code])
 
   useEffect(() => {
+    closingRef.current = false
     connect()
     return () => {
+      closingRef.current = true
       wsRef.current?.close()
       wsRef.current = null
     }

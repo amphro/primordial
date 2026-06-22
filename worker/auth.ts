@@ -91,17 +91,11 @@ async function handleCallback(url: URL, request: Request, env: Env): Promise<Res
     env.SESSION_SECRET,
   )
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: '/',
-      'Set-Cookie': [
-        sessionCookie(sessionToken),
-        // Clear the oauth state cookie
-        'oauth_state=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/',
-      ].join(', '),
-    },
-  })
+  // Two separate Set-Cookie headers — joining them into one value breaks cookie parsing.
+  const headers = new Headers({ Location: '/' })
+  headers.append('Set-Cookie', sessionCookie(sessionToken))
+  headers.append('Set-Cookie', 'oauth_state=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/')
+  return new Response(null, { status: 302, headers })
 }
 
 function handleLogout(): Response {

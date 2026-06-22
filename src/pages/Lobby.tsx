@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 
 export default function Lobby() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [joinCode, setJoinCode] = useState('')
+  const [searchParams] = useSearchParams()
+  const [joinCode, setJoinCode] = useState(() => searchParams.get('join') ?? '')
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)

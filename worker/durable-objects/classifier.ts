@@ -8,13 +8,19 @@ export interface Classification {
 
 const DEFAULT: Classification = { action: 'GROW', zone: 'ALL', intensity: 'CAUTIOUS' }
 
-const VALID_ACTIONS = new Set(['GROW', 'ARMOR', 'TOXIN', 'HUNT', 'SCATTER', 'PULSE', 'WALL', 'FEAST'])
+// Only advertise the 4 actions that are actually implemented in the simulation.
+// Re-add TOXIN/SCATTER/WALL/FEAST here when their simulation branches ship.
+const VALID_ACTIONS = new Set(['GROW', 'ARMOR', 'HUNT', 'PULSE'])
 const VALID_ZONES   = new Set(['NORTH', 'SOUTH', 'EAST', 'WEST', 'ALL'])
 const VALID_INTENS  = new Set(['CAUTIOUS', 'NORMAL', 'AGGRESSIVE'])
 
 const SYSTEM_PROMPT = `You classify a player's natural language prompt into three game dimensions.
 
-ACTION (pick exactly one): GROW (more cells born), ARMOR (cells resist death), HUNT (cells chase enemies), PULSE (destroy nearby enemies in a burst), TOXIN (poison adjacent enemies), SCATTER (spread outward), WALL (spawn barrier cells), FEAST (consume nutrients faster)
+ACTION (pick exactly one):
+- GROW: spawn more cells, spread, expand, multiply, colonize, reproduce, bloom, feast, nourish
+- ARMOR: defend, protect, shield, fortify, harden, hold the line, turtle, resist, reinforce
+- HUNT: attack, chase, kill, rush, assault, invade, pursue, destroy, eliminate, overrun
+- PULSE: burst, explode, nuke, detonate, shockwave, blast, wipe out, annihilate, obliterate
 
 ZONE (pick exactly one): NORTH (top half), SOUTH (bottom half), EAST (right half), WEST (left half), ALL (everywhere)
 

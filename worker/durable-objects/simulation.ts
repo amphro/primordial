@@ -66,6 +66,26 @@ function zoneCentroid(zone: Zone, w: number, h: number): [number, number] {
   }
 }
 
+// Returns the centroid of enemy cells in zone, falling back to geometric centroid if zone is empty.
+function enemyCentroidInZone(
+  zone: Zone,
+  grid: Uint8Array,
+  enemyColor: CellValue,
+  w: number,
+  h: number,
+): [number, number] {
+  let sumX = 0, sumY = 0, count = 0
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (inZone(x, y, zone, w, h) && grid[idx(x, y, w)] === enemyColor) {
+        sumX += x; sumY += y; count++
+      }
+    }
+  }
+  if (count === 0) return zoneCentroid(zone, w, h)
+  return [Math.round(sumX / count), Math.round(sumY / count)]
+}
+
 function neighbors4(x: number, y: number, w: number, h: number): [number, number][] {
   const result: [number, number][] = []
   if (x > 0)     result.push([x - 1, y])
@@ -227,7 +247,7 @@ function applyPulse(
   const baseKill = killPctForPulse(intensity, pulse.killPct, im.effectMult, intCfg.cautious.effectMult)
   const effectiveKill = armorCountered ? baseKill * (1 - config.counterEffectReductionPct) : baseKill
 
-  const [cx, cy] = zoneCentroid(zone, w, h)
+  const [cx, cy] = enemyCentroidInZone(zone, state.grid, enemy, w, h)
   for (const [nx, ny] of cellsInRadius(cx, cy, r, w, h)) {
     const i = idx(nx, ny, w)
     if (state.grid[i] === enemy) {
@@ -288,6 +308,7 @@ function applyHunt(
   zone: Zone,
   intensity: Intensity,
   config: GameConfig,
+  armorBypassed: boolean,
   rng: () => number,
 ): void {
   const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { hunt } } = config
@@ -330,7 +351,17 @@ function applyHunt(
       state.starvation[srcI] = 0
       state.armor[srcI] = 0
     } else if (state.grid[destI] === enemy && state.armor[destI] > 0) {
-      state.armor[destI]--
+      if (armorBypassed) {
+        // HUNT beats ARMOR: hunters cut through armor
+        state.grid[destI] = me
+        state.grid[srcI] = CELL.EMPTY
+        state.starvation[destI] = 0
+        state.armor[destI] = 0
+        state.starvation[srcI] = 0
+        state.armor[srcI] = 0
+      } else {
+        state.armor[destI]--
+      }
     }
 
     if (intensity === 'AGGRESSIVE' && rng() < im.friendlyFirePct) {
@@ -340,6 +371,38 @@ function applyHunt(
 }
 
 // ── base simulation step ──────────────────────────────────────────────────────
+
+function spawnNutrientBurst(
+  state: GridState,
+  color: CellValue,
+  burst: number,
+  capacity: number,
+  w: number,
+  h: number,
+  rng: () => number,
+): void {
+  const { grid, nutrients } = state
+  const myCells: number[] = []
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === color) myCells.push(i)
+  }
+  if (myCells.length === 0) return
+
+  let added = 0, attempts = 0
+  while (added < burst && attempts < burst * 20) {
+    attempts++
+    const baseIdx = myCells[Math.floor(rng() * myCells.length)]
+    const bx = baseIdx % w
+    const by = Math.floor(baseIdx / w)
+    const nx = Math.max(0, Math.min(w - 1, bx + Math.floor((rng() - 0.5) * 10)))
+    const ny = Math.max(0, Math.min(h - 1, by + Math.floor((rng() - 0.5) * 10)))
+    const ni = ny * w + nx
+    if (nutrients[ni] === 0 && grid[ni] === CELL.EMPTY) {
+      nutrients[ni] = capacity
+      added++
+    }
+  }
+}
 
 function baseSimStep(state: GridState, config: GameConfig, round: number, rng: () => number): void {
   const { gridWidth: w, gridHeight: h, nutrientScanRadius, starvationGraceTicks, nutrientDepletionTtl, nutrientCapacity, nutrientRegenByRound } = config
@@ -412,6 +475,28 @@ function baseSimStep(state: GridState, config: GameConfig, round: number, rng: (
       }
     }
   }
+
+  // Armor decay: 1 hit point per tick so ARMOR protects for ~2 rounds instead of exactly 1.
+  for (let i = 0; i < grid.length; i++) {
+    if (state.armor[i] > 0) state.armor[i]--
+  }
+
+  // Comeback mechanic: when a player falls to ≤ comebackThresholdPct of occupied cells,
+  // spawn a nutrient burst near their remaining cells so they can fight back.
+  let blueCount = 0, redCount = 0
+  for (const cell of grid) {
+    if (cell === CELL.BLUE) blueCount++
+    else if (cell === CELL.RED) redCount++
+  }
+  const occupied = blueCount + redCount
+  if (occupied > 0) {
+    if ((blueCount / occupied) * 100 <= config.comebackThresholdPct) {
+      spawnNutrientBurst(state, CELL.BLUE, config.comebackNutrientBurst, config.nutrientCapacity, w, h, rng)
+    }
+    if ((redCount / occupied) * 100 <= config.comebackThresholdPct) {
+      spawnNutrientBurst(state, CELL.RED, config.comebackNutrientBurst, config.nutrientCapacity, w, h, rng)
+    }
+  }
 }
 
 // ── counter-web (Phase 2: ARMOR beats PULSE) ──────────────────────────────────
@@ -434,9 +519,13 @@ function checkCounters(
     if (red.action === 'ARMOR' && blue.action === 'PULSE') {
       counters.push({ winner: 'ARMOR', loser: 'PULSE', zone: blue.zone, reduction: config.counterEffectReductionPct })
     }
-    // TOXIN beats GROW (Phase 4 — stub for completeness)
-    // PULSE beats SCATTER (Phase 4)
-    // HUNT beats TOXIN (Phase 4)
+    // HUNT beats ARMOR — hunters bypass armor plating
+    if (blue.action === 'HUNT' && red.action === 'ARMOR') {
+      counters.push({ winner: 'HUNT', loser: 'ARMOR', zone: blue.zone, reduction: config.counterEffectReductionPct })
+    }
+    if (red.action === 'HUNT' && blue.action === 'ARMOR') {
+      counters.push({ winner: 'HUNT', loser: 'ARMOR', zone: red.zone, reduction: config.counterEffectReductionPct })
+    }
   }
 
   return counters
@@ -462,7 +551,7 @@ function checkWin(grid: Uint8Array, config: GameConfig, round: number): {
   let winner: 'blue' | 'red' | null = null
   if (bluePct >= config.winThresholdPct) winner = 'blue'
   else if (redPct >= config.winThresholdPct) winner = 'red'
-  else if (round >= config.totalRounds) winner = blue >= red ? 'blue' : 'red'
+  else if (round >= config.totalRounds - 1) winner = blue >= red ? 'blue' : 'red'  // round is 0-indexed; fires on the totalRounds-th tick
   return { winner, bluePct, redPct, blueCells: blue, redCells: red }
 }
 
@@ -481,6 +570,10 @@ export function simulateTick(
     counters.some(c => c.loser === 'PULSE' &&
       ((player === 'red' && redAction?.action === 'PULSE') ||
        (player === 'blue' && blueAction?.action === 'PULSE')))
+  const huntBypAssesArmor = (player: 'blue' | 'red') =>
+    counters.some(c => c.winner === 'HUNT' &&
+      ((player === 'blue' && blueAction?.action === 'HUNT') ||
+       (player === 'red'  && redAction?.action === 'HUNT')))
 
   // Resolution order per game design doc
   // 1. WALL — Phase 4
@@ -497,12 +590,10 @@ export function simulateTick(
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
     if (!spec) continue
     if (spec.action === 'GROW')  applyGrow(state, player, spec.zone, spec.intensity, config, rng)
-    if (spec.action === 'HUNT')  applyHunt(state, player, spec.zone, spec.intensity, config, rng)
+    if (spec.action === 'HUNT')  applyHunt(state, player, spec.zone, spec.intensity, config, huntBypAssesArmor(player), rng)
   }
-  // 6. Base sim
+  // 6. Base sim (includes armor decay — armor now persists ~2 rounds)
   baseSimStep(state, config, round, rng)
-  // 7. Expire ARMOR (not persistent across ticks — re-applied each tick on submit)
-  state.armor.fill(0)
 
   const { winner, bluePct, redPct, blueCells, redCells } = checkWin(state.grid, config, round)
   return { state, counters, bluePct, redPct, blueCells, redCells, winner }

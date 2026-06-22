@@ -30,6 +30,10 @@ interface StoredPrompt {
 export class GameRoom extends DurableObject<Env> {
   // Ephemeral (reset on eviction — recovered via storage on next request)
   private players = new Map<string, ConnectedPlayer>()
+  // Synchronous pending locks set before async AI classification to prevent
+  // double-submits or prompt leaks across round boundaries
+  private promptBluePending = false
+  private promptRedPending  = false
 
   // Persisted in DO storage (rehydrated in constructor)
   private gameCode = ''
@@ -40,6 +44,10 @@ export class GameRoom extends DurableObject<Env> {
   private gridState: GridState | null = null
   private promptBlue: StoredPrompt | null = null
   private promptRed: StoredPrompt | null = null
+  private lastWinner: 'blue' | 'red' | null = null
+  private lastWinReason: 'threshold' | 'rounds' | null = null
+  private botColor: 'blue' | 'red' | null = null
+  private botSubmitAt = 0  // ms timestamp; 0 = not scheduled
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -71,8 +79,12 @@ export class GameRoom extends DurableObject<Env> {
         }
       }
 
-      this.promptBlue = (await ctx.storage.get<StoredPrompt>('promptBlue')) ?? null
-      this.promptRed  = (await ctx.storage.get<StoredPrompt>('promptRed'))  ?? null
+      this.promptBlue    = (await ctx.storage.get<StoredPrompt>('promptBlue')) ?? null
+      this.promptRed     = (await ctx.storage.get<StoredPrompt>('promptRed'))  ?? null
+      this.lastWinner    = (await ctx.storage.get<'blue' | 'red'>('lastWinner')) ?? null
+      this.lastWinReason = (await ctx.storage.get<'threshold' | 'rounds'>('lastWinReason')) ?? null
+      this.botColor      = (await ctx.storage.get<'blue' | 'red'>('botColor')) ?? null
+      this.botSubmitAt   = (await ctx.storage.get<number>('botSubmitAt')) ?? 0
     })
   }
 
@@ -92,81 +104,131 @@ export class GameRoom extends DurableObject<Env> {
   // ── alarm (tick loop) ─────────────────────────────────────────────────────
 
   async alarm(): Promise<void> {
+    const now = Date.now()
+
+    // Bot submit fires before the next tick
+    if (this.botSubmitAt > 0 && now >= this.botSubmitAt - 200) {
+      this.botSubmitAt = 0
+      await this.ctx.storage.put('botSubmitAt', 0)
+      await this.handleBotSubmit()
+      // Re-arm for the main tick (unless it was already overridden to fire immediately)
+      if (this.phase === 'active' && this.alarmFiresAt > now) {
+        await this.ctx.storage.setAlarm(this.alarmFiresAt).catch(() => {})
+      }
+      return
+    }
+
     if (this.phase !== 'active' || !this.gridState) return
 
-    const blueSpec = this.promptBlue
-      ? { action: this.promptBlue.action, zone: this.promptBlue.zone, intensity: this.promptBlue.intensity }
-      : null
-    const redSpec = this.promptRed
-      ? { action: this.promptRed.action, zone: this.promptRed.zone, intensity: this.promptRed.intensity }
-      : null
+    try {
+      const prevCells = this.currentScores()
 
-    const result = simulateTick(
-      this.gridState,
-      this.round,
-      this.config,
-      blueSpec,
-      redSpec,
-      Math.random,
-    )
+      const blueSpec = this.promptBlue
+        ? { action: this.promptBlue.action, zone: this.promptBlue.zone, intensity: this.promptBlue.intensity }
+        : null
+      const redSpec = this.promptRed
+        ? { action: this.promptRed.action, zone: this.promptRed.zone, intensity: this.promptRed.intensity }
+        : null
 
-    this.gridState = result.state
-    this.round++
+      const result = simulateTick(
+        this.gridState,
+        this.round,
+        this.config,
+        blueSpec,
+        redSpec,
+        Math.random,
+      )
 
-    // Write analytics
-    writeTickResolved(this.env.AE, {
-      gameCode: this.gameCode,
-      round: this.round,
-      blueAction: blueSpec?.action ?? 'GROW', blueZone: blueSpec?.zone ?? 'ALL', blueIntensity: blueSpec?.intensity ?? 'CAUTIOUS',
-      redAction:  redSpec?.action  ?? 'GROW', redZone:  redSpec?.zone  ?? 'ALL', redIntensity:  redSpec?.intensity  ?? 'CAUTIOUS',
-      bluePct: result.bluePct, redPct: result.redPct,
-      blueCells: result.blueCells, redCells: result.redCells,
-    })
+      this.gridState = result.state
+      this.round++
 
-    for (const counter of result.counters) {
-      writeCounterTriggered(this.env.AE, {
+      // Write analytics
+      writeTickResolved(this.env.AE, {
         gameCode: this.gameCode,
         round: this.round,
-        winnerAction: counter.winner,
-        loserAction: counter.loser,
-        zone: counter.zone,
-        reduction: counter.reduction,
+        blueAction: blueSpec?.action ?? 'GROW', blueZone: blueSpec?.zone ?? 'ALL', blueIntensity: blueSpec?.intensity ?? 'CAUTIOUS',
+        redAction:  redSpec?.action  ?? 'GROW', redZone:  redSpec?.zone  ?? 'ALL', redIntensity:  redSpec?.intensity  ?? 'CAUTIOUS',
+        bluePct: result.bluePct, redPct: result.redPct,
+        blueCells: result.blueCells, redCells: result.redCells,
       })
-    }
 
-    // Broadcast resolve (what both prompts were this tick) before clearing them
-    this.broadcast({
-      type: 'resolve',
-      round: this.round,
-      blue: this.promptBlue ? { prompt: this.promptBlue.text, action: this.promptBlue.action, zone: this.promptBlue.zone, intensity: this.promptBlue.intensity } : null,
-      red:  this.promptRed  ? { prompt: this.promptRed.text,  action: this.promptRed.action,  zone: this.promptRed.zone,  intensity: this.promptRed.intensity  } : null,
-    })
+      for (const counter of result.counters) {
+        writeCounterTriggered(this.env.AE, {
+          gameCode: this.gameCode,
+          round: this.round,
+          winnerAction: counter.winner,
+          loserAction: counter.loser,
+          zone: counter.zone,
+          reduction: counter.reduction,
+        })
+      }
 
-    // Persist updated state and clear prompts
-    await this.persistGridState()
-    await this.ctx.storage.put('round', this.round)
-    await this.clearPrompts()
+      // Broadcast resolve (what both prompts were this tick) before clearing them
+      this.broadcast({
+        type: 'resolve',
+        round: this.round,
+        blue: this.promptBlue ? {
+          prompt: this.promptBlue.text,
+          action: this.promptBlue.action,
+          zone: this.promptBlue.zone,
+          intensity: this.promptBlue.intensity,
+          delta: result.blueCells - prevCells.blueCells,
+        } : null,
+        red: this.promptRed ? {
+          prompt: this.promptRed.text,
+          action: this.promptRed.action,
+          zone: this.promptRed.zone,
+          intensity: this.promptRed.intensity,
+          delta: result.redCells - prevCells.redCells,
+        } : null,
+      })
 
-    if (result.winner) {
-      await this.endGame(result.winner, result.winner !== null && (result.bluePct >= this.config.winThresholdPct || result.redPct >= this.config.winThresholdPct) ? 'threshold' : 'rounds', result.bluePct, result.redPct)
-    } else {
-      // Schedule next tick and update timer
+      // Persist updated state and clear prompts
+      await this.persistGridState()
+      await this.ctx.storage.put('round', this.round)
+      await this.clearPrompts()
+
+      if (result.winner) {
+        await this.endGame(result.winner, result.winner !== null && (result.bluePct >= this.config.winThresholdPct || result.redPct >= this.config.winThresholdPct) ? 'threshold' : 'rounds', result.bluePct, result.redPct)
+        // Don't broadcast state after game_over — it would race the game_over message
+        // and could bounce the client off the GameOver screen.
+        return
+      }
+
+      // Schedule next tick
       this.alarmFiresAt = Date.now() + this.config.promptTimerMs
       await this.ctx.storage.put('alarmFiresAt', this.alarmFiresAt)
-      await this.ctx.storage.setAlarm(this.alarmFiresAt)
-    }
 
-    // Broadcast new state after resolve so clients update the board
-    this.broadcastState(result.bluePct, result.redPct)
+      if (this.botColor) {
+        // Bot submits 1–3 s into the new round, before the tick fires
+        this.botSubmitAt = Date.now() + 1000 + Math.random() * 2000
+        await this.ctx.storage.put('botSubmitAt', this.botSubmitAt)
+        await this.ctx.storage.setAlarm(this.botSubmitAt)
+      } else {
+        await this.ctx.storage.setAlarm(this.alarmFiresAt)
+      }
+
+      // Broadcast new state after resolve so clients update the board
+      this.broadcastState(result.bluePct, result.redPct)
+    } catch (err) {
+      console.error('[GameRoom] alarm error — rescheduling tick:', err)
+      // Don't let a transient error kill the DO. Reschedule and keep going.
+      if (this.phase === 'active') {
+        this.alarmFiresAt = Date.now() + this.config.promptTimerMs
+        await this.ctx.storage.put('alarmFiresAt', this.alarmFiresAt).catch(() => {})
+        await this.ctx.storage.setAlarm(this.alarmFiresAt).catch(() => {})
+      }
+    }
   }
 
   // ── routes ────────────────────────────────────────────────────────────────
 
   private async handleInit(request: Request): Promise<Response> {
-    const body = await request.json() as { code: string; gameSettings?: Partial<GameConfig> }
+    const body = await request.json() as { code: string; botColor?: 'blue' | 'red'; gameSettings?: Partial<GameConfig> }
     this.gameCode = body.code
     this.phase = 'active'
     this.round = 0
+    this.botColor = body.botColor ?? null
 
     // Load config: KV balance + per-game overrides
     const baseConfig = await loadConfig(this.env.KV)
@@ -182,12 +244,21 @@ export class GameRoom extends DurableObject<Env> {
     await this.ctx.storage.put('phase', this.phase)
     await this.ctx.storage.put('round', this.round)
     await this.ctx.storage.put('config', this.config)
+    await this.ctx.storage.put('botColor', this.botColor ?? '')
     await this.persistGridState()
 
     // Start tick loop
     this.alarmFiresAt = Date.now() + this.config.promptTimerMs
     await this.ctx.storage.put('alarmFiresAt', this.alarmFiresAt)
-    await this.ctx.storage.setAlarm(this.alarmFiresAt)
+
+    if (this.botColor) {
+      // Bot submits 1–3 s after round starts
+      this.botSubmitAt = Date.now() + 1000 + Math.random() * 2000
+      await this.ctx.storage.put('botSubmitAt', this.botSubmitAt)
+      await this.ctx.storage.setAlarm(this.botSubmitAt)
+    } else {
+      await this.ctx.storage.setAlarm(this.alarmFiresAt)
+    }
 
     return new Response('ok')
   }
@@ -198,12 +269,28 @@ export class GameRoom extends DurableObject<Env> {
     const body = await request.json() as { color: 'blue' | 'red'; prompt: string }
     const { color, prompt } = body
 
-    // Check if already locked
-    if (color === 'blue' && this.promptBlue) return new Response(JSON.stringify({ error: 'Already locked' }), { status: 409 })
-    if (color === 'red'  && this.promptRed)  return new Response(JSON.stringify({ error: 'Already locked' }), { status: 409 })
+    // Check if already locked — include the pending flag to block double-submits
+    // that sneak past before the async AI call returns.
+    if (color === 'blue' && (this.promptBlue || this.promptBluePending)) return new Response(JSON.stringify({ error: 'Already locked' }), { status: 409 })
+    if (color === 'red'  && (this.promptRed  || this.promptRedPending))  return new Response(JSON.stringify({ error: 'Already locked' }), { status: 409 })
+
+    // Synchronously mark as pending so no concurrent request for the same color
+    // can slip past while we await the AI classification.
+    const roundAtSubmit = this.round
+    if (color === 'blue') this.promptBluePending = true
+    else                  this.promptRedPending  = true
 
     // Classify the prompt (at submit-time, never in alarm)
     const { classification, latencyMs } = await classifyPrompt(prompt, this.env.AI)
+
+    // Clear pending flag regardless of outcome
+    if (color === 'blue') this.promptBluePending = false
+    else                  this.promptRedPending  = false
+
+    // If the round advanced or the game ended during classification, discard the prompt
+    if (this.phase !== 'active' || this.round !== roundAtSubmit) {
+      return new Response(JSON.stringify({ error: 'Round expired' }), { status: 409 })
+    }
 
     writePromptClassified(this.env.AE, {
       gameCode: this.gameCode,
@@ -255,8 +342,9 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private handleWebSocket(request: Request): Response {
-    const userId     = request.headers.get('X-User-Id') ?? ''
+    const userId      = request.headers.get('X-User-Id') ?? ''
     const displayName = request.headers.get('X-Display-Name') ?? 'Player'
+    const headerColor = request.headers.get('X-Player-Color') as 'blue' | 'red' | null
 
     if (!userId) return new Response('Unauthorized', { status: 401 })
 
@@ -264,16 +352,39 @@ export class GameRoom extends DurableObject<Env> {
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket]
     server.accept()
 
-    const existingColors = new Set([...this.players.values()].map(p => p.color))
-    const color: 'blue' | 'red' = existingColors.has('blue') ? 'red' : 'blue'
+    // Use the color assigned in D1 (passed by the Worker) so it never flips on reconnect.
+    // Fall back to connection-order assignment only if no color header is present.
+    let color: 'blue' | 'red'
+    if (headerColor === 'blue' || headerColor === 'red') {
+      color = headerColor
+    } else {
+      const existingColors = new Set([...this.players.values()].map(p => p.color))
+      color = existingColors.has('blue') ? 'red' : 'blue'
+    }
     this.players.set(userId, { ws: server, userId, displayName, color })
 
     // Send full current state to the newly connected player
     server.send(JSON.stringify(this.buildFullStateMsg()))
 
+    // If game already finished, immediately send game_over so the client navigates properly
+    if (this.phase === 'finished' && this.lastWinner) {
+      const { bluePct, redPct } = this.currentScores()
+      server.send(JSON.stringify({
+        type: 'game_over',
+        winner: this.lastWinner,
+        winReason: this.lastWinReason ?? 'rounds',
+        scores: { blue: Math.round(bluePct), red: Math.round(redPct) },
+      }))
+    }
+
     this.broadcast({ type: 'player_joined', displayName, color }, userId)
 
     server.addEventListener('close', () => {
+      // Guard: if a newer socket already replaced this one in the map, don't evict it.
+      // This happens when React StrictMode double-mounts or the client reconnects before
+      // the old close event fires — without this guard the live socket gets deleted from
+      // the broadcast map and the client never receives state updates again.
+      if (this.players.get(userId)?.ws !== server) return
       this.players.delete(userId)
       this.broadcast({ type: 'player_left', displayName, color })
     })
@@ -306,6 +417,7 @@ export class GameRoom extends DurableObject<Env> {
       phase: this.phase,
       round: this.round,
       totalRounds: this.config.totalRounds,
+      promptTimerMs: this.config.promptTimerMs,
       scores: { blue: Math.round(bluePct), red: Math.round(redPct) },
       cells:  { blue: blueCells, red: redCells },
       promptStatus: {
@@ -318,13 +430,59 @@ export class GameRoom extends DurableObject<Env> {
         color: p.color,
       })),
       alarmFiresAt: this.alarmFiresAt,
+      gridW: this.config.gridWidth,
+      gridH: this.config.gridHeight,
       grid: this.gridState ? Array.from(this.gridState.grid) : [],
       nutrients: this.gridState ? Array.from(this.gridState.nutrients) : [],
+      armor: this.gridState ? Array.from(this.gridState.armor) : [],
+      starvation: this.gridState ? Array.from(this.gridState.starvation) : [],
     }
   }
 
   private broadcastState(_bluePct: number, _redPct: number): void {
     this.broadcast(this.buildFullStateMsg())
+  }
+
+  private async handleBotSubmit(): Promise<void> {
+    if (!this.botColor || this.phase !== 'active') return
+    const color = this.botColor
+
+    // Don't double-submit
+    if (color === 'blue' && this.promptBlue) return
+    if (color === 'red'  && this.promptRed)  return
+
+    const actions:     Action[]    = ['GROW', 'HUNT', 'PULSE', 'ARMOR']
+    const zones:       Zone[]      = ['ALL', 'NORTH', 'SOUTH', 'EAST', 'WEST']
+    const intensities: Intensity[] = ['CAUTIOUS', 'NORMAL', 'AGGRESSIVE']
+
+    const action    = actions[Math.floor(Math.random() * actions.length)]
+    const zone      = zones[Math.floor(Math.random() * zones.length)]
+    const intensity = intensities[Math.floor(Math.random() * intensities.length)]
+
+    const stored: StoredPrompt = {
+      text: `[CPU] ${action} ${zone}`,
+      action,
+      zone,
+      intensity,
+      lockedAt: Date.now(),
+    }
+
+    if (color === 'blue') {
+      this.promptBlue = stored
+      await this.ctx.storage.put('promptBlue', stored)
+    } else {
+      this.promptRed = stored
+      await this.ctx.storage.put('promptRed', stored)
+    }
+
+    this.broadcast({ type: 'prompt_locked', color })
+
+    // If both players are now locked, fire the tick immediately
+    if (this.promptBlue && this.promptRed) {
+      this.alarmFiresAt = Date.now()
+      await this.ctx.storage.put('alarmFiresAt', this.alarmFiresAt)
+      await this.ctx.storage.setAlarm(this.alarmFiresAt)
+    }
   }
 
   private async endGame(
@@ -335,7 +493,11 @@ export class GameRoom extends DurableObject<Env> {
   ): Promise<void> {
     if (this.phase === 'finished') return
     this.phase = 'finished'
+    this.lastWinner = winner
+    this.lastWinReason = winReason
     await this.ctx.storage.put('phase', 'finished')
+    await this.ctx.storage.put('lastWinner', winner)
+    await this.ctx.storage.put('lastWinReason', winReason)
     await this.ctx.storage.deleteAlarm()
 
     writeGameOver(this.env.AE, {
@@ -347,11 +509,15 @@ export class GameRoom extends DurableObject<Env> {
       totalRounds: this.round,
     })
 
-    // Update D1
+    // Update D1 — resolve color → user_id so winner_id is a real FK reference
     try {
+      const winnerRow = await this.env.DB.prepare(
+        'SELECT user_id FROM game_players WHERE game_code = ? AND color = ?',
+      ).bind(this.gameCode, winner).first<{ user_id: string }>()
+      const winnerId = winnerRow?.user_id ?? winner
       await this.env.DB.prepare(
         "UPDATE games SET status = 'finished', winner_id = ?, finished_at = ? WHERE code = ?",
-      ).bind(winner, Date.now(), this.gameCode).run()
+      ).bind(winnerId, Date.now(), this.gameCode).run()
     } catch { /* non-fatal */ }
 
     this.broadcast({ type: 'game_over', winner, winReason, scores: { blue: Math.round(bluePct), red: Math.round(redPct) } })

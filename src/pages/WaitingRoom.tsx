@@ -4,6 +4,19 @@ import { useAuth } from '../hooks/useAuth'
 import { useGameSocket, GameMsg } from '../hooks/useGameSocket'
 import { s } from '../lib/styles'
 
+function useInviteLink(code: string | undefined) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    if (!code) return
+    const url = `${window.location.origin}/?join=${code}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+  return { copied, copy }
+}
+
 interface Player {
   userId: string
   displayName: string
@@ -15,26 +28,20 @@ export default function WaitingRoom() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [players, setPlayers] = useState<Player[]>([])
+  const [hostId, setHostId] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+  const { copied: inviteCopied, copy: copyInvite } = useInviteLink(code)
 
-  const onMessage = useCallback((msg: GameMsg) => {
-    if (msg.type === 'state' && 'players' in msg) {
-      setPlayers(msg.players as Player[])
-    }
-    if (msg.type === 'game_started') {
-      navigate(`/game/${code}`)
-    }
-  }, [code, navigate])
-
-  const { connected } = useGameSocket(code, onMessage)
-
-  // Also fetch game info on load
-  useEffect(() => {
+  // Single fetch fn shared by initial load and player_joined/player_left events.
+  // Always use D1 as the source of truth for the lobby player list so we don't
+  // depend on WebSocket connection order for host detection.
+  const refetchGame = useCallback(() => {
     if (!code) return
     fetch(`/api/games/${code}`, { credentials: 'include' })
       .then(r => r.json())
-      .then((data: { players?: Array<{ id: string; display_name: string; color: string }> }) => {
+      .then((data: { game?: { host_id: string }; players?: Array<{ id: string; display_name: string; color: string }> }) => {
+        if (data.game?.host_id) setHostId(data.game.host_id)
         if (data.players) {
           setPlayers(data.players.map(p => ({
             userId: p.id,
@@ -46,7 +53,27 @@ export default function WaitingRoom() {
       .catch(() => {})
   }, [code])
 
-  const isHost = players[0]?.userId === user?.userId
+  useEffect(() => {
+    refetchGame()
+  }, [refetchGame])
+
+  const onMessage = useCallback((msg: GameMsg) => {
+    // Navigate when the game goes active (host started, or add-bot auto-started).
+    // The DO broadcasts a state msg with phase='active'; there is no 'game_started' type.
+    if (msg.type === 'state') {
+      const s = msg as { type: 'state'; phase: string }
+      if (s.phase === 'active') navigate(`/game/${code}`)
+    }
+    // Refresh D1 player list when someone joins or leaves
+    if (msg.type === 'player_joined' || msg.type === 'player_left') {
+      refetchGame()
+    }
+  }, [code, navigate, refetchGame])
+
+  const { connected } = useGameSocket(code, onMessage)
+
+  // isHost derived from D1 host_id, not WS connection order
+  const isHost = hostId !== null && hostId === user?.userId
 
   async function addBot() {
     setError('')
@@ -84,9 +111,17 @@ export default function WaitingRoom() {
         <p style={{ color: '#3a5a7a', fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>GAME CODE</p>
         <h1 style={{ fontSize: 36, letterSpacing: 10, color: '#4a9eff', marginBottom: 32 }}>{code}</h1>
 
-        <p style={{ color: '#3a5a7a', fontSize: 11, marginBottom: 16 }}>
-          {connected ? '● connected' : '○ connecting...'}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <p style={{ color: '#3a5a7a', fontSize: 11, margin: 0 }}>
+            {connected ? '● connected' : '○ connecting...'}
+          </p>
+          <button
+            style={{ ...s.ghostButton, fontSize: 11, padding: '4px 12px' }}
+            onClick={copyInvite}
+          >
+            {inviteCopied ? '✓ Link copied' : 'Copy invite link'}
+          </button>
+        </div>
 
         <div style={{ marginBottom: 32 }}>
           {players.map(p => (
