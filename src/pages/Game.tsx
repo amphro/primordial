@@ -42,6 +42,8 @@ export default function Game() {
 
   // Keep myColor accessible inside the WS callback without stale closures
   const myColorRef = useRef<'blue' | 'red' | undefined>(undefined)
+  // Deduplicate round-start chime — only fire once per new round number
+  const lastRoundChimeRef = useRef(-1)
 
   // Countdown timer
   useEffect(() => {
@@ -69,8 +71,11 @@ export default function Game() {
       const mc = s.players.find(p => p.userId === user?.userId)?.color
       myColorRef.current = mc
       if (mc) setMyLocked(s.promptStatus[mc] === 'locked')
-      // Sound: chime when a new round's timer starts (round > 0 so we skip the very first)
-      if (s.phase === 'active' && s.round > 0) playRoundStart()
+      // Sound: chime once per new round, delayed so it doesn't overlap the action sound from resolve
+      if (s.phase === 'active' && s.round > 0 && s.round !== lastRoundChimeRef.current) {
+        lastRoundChimeRef.current = s.round
+        setTimeout(() => playRoundStart(), 500)
+      }
     }
 
     if (msg.type === 'resolve') {
