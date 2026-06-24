@@ -43,6 +43,8 @@ interface GameOverData {
 }
 
 const isLocalhost = typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+const devParam = typeof window !== 'undefined' ? new URLSearchParams(location.search).get('dev') : null
+const devDefault = devParam === '1' || (isLocalhost && devParam !== '0')
 
 export default function Game() {
   const { code } = useParams<{ code: string }>()
@@ -65,7 +67,7 @@ export default function Game() {
   const [liveCaption, setLiveCaption] = useState<{ blueTrace: string; redTrace: string } | null>(null)
   const [roundHistory, setRoundHistory] = useState<RoundRecord[]>([])
   const [speed, setSpeed] = useState<Speed>(DEFAULT_SPEED)
-  const [devOpen, setDevOpen] = useState(isLocalhost)
+  const [devOpen, setDevOpen] = useState(devDefault)
   const [gameFinished, setGameFinished] = useState(false)
   const [gameOverData, setGameOverData] = useState<GameOverData | null>(null)
   const [myStrategy, setMyStrategy] = useState<Strategy | null>(null)
