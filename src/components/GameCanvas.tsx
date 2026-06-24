@@ -24,100 +24,103 @@ interface Props {
   size?: number
 }
 
-function getZoneCx(zone: string, size: number): number {
-  if (zone === 'WEST') return size * 0.25
-  if (zone === 'EAST') return size * 0.75
-  return size * 0.5
-}
-
-function getZoneCy(zone: string, size: number): number {
-  if (zone === 'NORTH') return size * 0.25
-  if (zone === 'SOUTH') return size * 0.75
-  return size * 0.5
+// Returns [x, y, width, height] of the zone in canvas coordinates
+function zoneBounds(zone: string, size: number): [number, number, number, number] {
+  const h = size / 2
+  switch (zone) {
+    case 'NORTH': return [0, 0, size, h]
+    case 'SOUTH': return [0, h, size, h]
+    case 'EAST':  return [h, 0, h, size]
+    case 'WEST':  return [0, 0, h, size]
+    default:      return [0, 0, size, size]
+  }
 }
 
 function drawEffect(ctx: CanvasRenderingContext2D, effect: AnimEffect, t: number, size: number): void {
-  const cx = getZoneCx(effect.zone, size)
-  const cy = getZoneCy(effect.zone, size)
-  const alpha = 1 - t
   const rgb = effect.color === 'blue' ? '74, 158, 255' : '255, 107, 74'
+  const [bx, by, bw, bh] = zoneBounds(effect.zone, size)
+  const cx = bx + bw / 2
+  const cy = by + bh / 2
+  const pulse = Math.sin(t * Math.PI) // 0 → peak → 0
 
   switch (effect.action) {
+    case 'GROW': {
+      // Zone-wide radial bloom — cells lighting up across the zone, not particles from center
+      const maxR = Math.sqrt(bw * bw + bh * bh) * 0.65
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR)
+      grad.addColorStop(0,   `rgba(${rgb}, ${pulse * 0.55})`)
+      grad.addColorStop(0.6, `rgba(${rgb}, ${pulse * 0.22})`)
+      grad.addColorStop(1,   `rgba(${rgb}, 0)`)
+      ctx.fillStyle = grad
+      ctx.fillRect(bx, by, bw, bh)
+      break
+    }
     case 'PULSE': {
+      // Three concentric shockwave rings from zone center
       for (let ring = 0; ring < 3; ring++) {
-        const rt = Math.max(0, t - ring * 0.18)
-        const r = rt * size * 0.48
+        const rt = Math.max(0, t - ring * 0.2)
+        const r = rt * Math.max(bw, bh) * 0.7
         const a = Math.max(0, (1 - rt) * 0.85)
         ctx.strokeStyle = `rgba(${rgb}, ${a})`
-        ctx.lineWidth = 3 - ring * 0.8
+        ctx.lineWidth = 4 - ring
         ctx.beginPath()
         ctx.arc(cx, cy, r, 0, Math.PI * 2)
         ctx.stroke()
       }
       break
     }
-    case 'GROW': {
-      const numDots = 10
-      for (let i = 0; i < numDots; i++) {
-        const angle = (i / numDots) * Math.PI * 2
-        const r = t * size * 0.38
-        const x = cx + Math.cos(angle) * r
-        const y = cy + Math.sin(angle) * r
-        const a = Math.max(0, alpha * 0.9)
-        ctx.fillStyle = `rgba(${rgb}, ${a})`
-        ctx.beginPath()
-        ctx.arc(x, y, Math.max(0.5, (1 - t) * 5), 0, Math.PI * 2)
-        ctx.fill()
-      }
-      break
-    }
     case 'HUNT': {
-      const numArrows = 6
-      for (let i = 0; i < numArrows; i++) {
-        const angle = (i / numArrows) * Math.PI * 2
-        const startR = size * 0.46
-        const endR = size * 0.08
-        const currentR = startR - t * (startR - endR)
-        const x = cx + Math.cos(angle) * currentR
-        const y = cy + Math.sin(angle) * currentR
-        const a = Math.max(0, alpha * 0.85)
-        const tailLen = 14 * Math.min(1, t * 3)
-        ctx.strokeStyle = `rgba(${rgb}, ${a})`
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.moveTo(x, y)
-        ctx.lineTo(
-          x + Math.cos(angle + Math.PI) * tailLen,
-          y + Math.sin(angle + Math.PI) * tailLen,
-        )
-        ctx.stroke()
-      }
-      break
-    }
-    case 'ARMOR': {
-      const shieldT = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65
-      const r = shieldT * size * 0.32
-      const a = shieldT * 0.9
-      ctx.strokeStyle = `rgba(${rgb}, ${a})`
-      ctx.lineWidth = 4
+      // Targeting reticle — cells locking onto prey in the zone
+      const r = Math.min(bw, bh) * (0.18 + 0.1 * t)
+      const fade = Math.max(0, 1 - t)
+      const scanAngle = t * Math.PI * 4  // two full sweeps
+      ctx.strokeStyle = `rgba(${rgb}, ${fade * 0.75})`
+      ctx.lineWidth = 1.5
+      // Target ring
       ctx.beginPath()
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
       ctx.stroke()
-      ctx.strokeStyle = `rgba(255, 255, 255, ${a * 0.4})`
-      ctx.lineWidth = 1.5
+      // 4 crosshair ticks extending outward from ring
+      const tick = r * 0.5
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) {
+        ctx.beginPath()
+        ctx.moveTo(cx + dx * r, cy + dy * r)
+        ctx.lineTo(cx + dx * (r + tick), cy + dy * (r + tick))
+        ctx.stroke()
+      }
+      // Scanning arc (bright, rotating sweep)
+      ctx.strokeStyle = `rgba(${rgb}, ${Math.min(1, fade * 2)})`
+      ctx.lineWidth = 2.5
       ctx.beginPath()
-      ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2)
+      ctx.arc(cx, cy, r, scanAngle, scanAngle + Math.PI * 0.45)
       ctx.stroke()
+      break
+    }
+    case 'ARMOR': {
+      // Pulsing shield border + inner radial glow
+      ctx.strokeStyle = `rgba(${rgb}, ${pulse * 0.9})`
+      ctx.lineWidth = pulse * 6
+      ctx.strokeRect(bx + 3, by + 3, bw - 6, bh - 6)
+      const maxR2 = Math.max(bw, bh) * 0.55
+      const grad2 = ctx.createRadialGradient(cx, cy, maxR2 * 0.25, cx, cy, maxR2)
+      grad2.addColorStop(0, `rgba(${rgb}, 0)`)
+      grad2.addColorStop(1, `rgba(${rgb}, ${pulse * 0.22})`)
+      ctx.fillStyle = grad2
+      ctx.fillRect(bx, by, bw, bh)
       break
     }
   }
 }
+
+const BIRTH_DURATION = 650  // ms for new-cell bloom
 
 export default function GameCanvas({ grid, nutrients, armor, starvation, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<AnimEvent | null>(null)
   const frameRef = useRef<number>(0)
+  const prevGridRef = useRef<number[]>([])
+  const birthCellsRef = useRef<{ i: number; color: number; ts: number }[]>([])
 
   // Main grid render
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, anim, g
     }
   }, [grid, nutrients, armor, starvation, gridW, gridH, size])
 
-  // Animation overlay
+  // Animation overlay — zone effects + per-cell birth blooms
   useEffect(() => {
     const overlay = overlayRef.current
     if (!overlay) return
@@ -180,34 +183,80 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, anim, g
     if (!ctx) return
 
     cancelAnimationFrame(frameRef.current)
-    ctx.clearRect(0, 0, size, size)
 
-    if (!anim) {
+    // Detect newly born cells by diffing previous grid (skip first render when prevGrid is empty)
+    if (prevGridRef.current.length > 0 && prevGridRef.current.length === grid.length) {
+      const ts = Date.now()
+      const born: { i: number; color: number; ts: number }[] = []
+      for (let i = 0; i < grid.length; i++) {
+        if (prevGridRef.current[i] === 0 && grid[i] !== 0) born.push({ i, color: grid[i], ts })
+      }
+      if (born.length > 0) birthCellsRef.current = born
+    }
+    if (grid.length > 0) prevGridRef.current = [...grid]
+
+    const nothingToAnimate = !anim && birthCellsRef.current.length === 0
+    if (nothingToAnimate) {
       animRef.current = null
+      ctx.clearRect(0, 0, size, size)
       return
     }
 
-    animRef.current = anim
+    animRef.current = anim ?? null
+
+    const cw = size / gridW
+    const ch = size / gridH
 
     const draw = () => {
       const ev = animRef.current
-      if (!ev) return
-      const elapsed = Date.now() - ev.startedAt
-      if (elapsed > 750) {
+      const cells = birthCellsRef.current
+      const now = Date.now()
+
+      const animElapsed = ev ? now - ev.startedAt : Infinity
+      const birthElapsed = cells.length > 0 ? now - cells[0].ts : Infinity
+      const animDone  = animElapsed  > 1200
+      const birthDone = birthElapsed > BIRTH_DURATION
+
+      if (animDone && birthDone) {
         ctx.clearRect(0, 0, size, size)
+        if (birthDone) birthCellsRef.current = []
         return
       }
+
       ctx.clearRect(0, 0, size, size)
-      const t = elapsed / 750
-      for (const effect of ev.effects) {
-        drawEffect(ctx, effect, t, size)
+
+      // Zone effects (GROW glow, PULSE rings, HUNT reticle, ARMOR shield)
+      if (ev && !animDone) {
+        const t = animElapsed / 1200
+        for (const effect of ev.effects) drawEffect(ctx, effect, t, size)
       }
+
+      // Per-cell birth blooms: cells pop in large and contract/fade to nothing
+      if (cells.length > 0 && !birthDone) {
+        const t = birthElapsed / BIRTH_DURATION
+        const scale = 1.0 + (1 - t) * 0.7   // 1.7x → 1.0x
+        const alpha = (1 - t) * 0.8
+        ctx.globalAlpha = alpha
+        for (const { i, color } of cells) {
+          const rgb = color === 1 ? '74, 158, 255' : '255, 107, 74'
+          const gx = i % gridW
+          const gy = Math.floor(i / gridW)
+          const x = (gx + 0.5) * cw
+          const y = (gy + 0.5) * ch
+          ctx.fillStyle = `rgba(${rgb}, 1)`
+          ctx.beginPath()
+          ctx.arc(x, y, cw * 0.5 * scale, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+      }
+
       frameRef.current = requestAnimationFrame(draw)
     }
 
     frameRef.current = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(frameRef.current)
-  }, [anim, size])
+  }, [anim, grid, gridW, gridH, size])
 
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: size }}>

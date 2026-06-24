@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { s } from '../lib/styles'
 
+async function startNewGame(navigate: ReturnType<typeof useNavigate>, setLoading: (b: boolean) => void) {
+  setLoading(true)
+  try {
+    const res = await fetch('/api/games', { method: 'POST', credentials: 'include' })
+    const data = await res.json() as { code: string }
+    await fetch(`/api/games/${data.code}/add-bot`, { method: 'POST', credentials: 'include' })
+    navigate(`/game/${data.code}`)
+  } catch {
+    setLoading(false)
+  }
+}
+
 interface RoundEntry {
   round: number
   myAction: string; myZone: string; myDelta: number
@@ -9,6 +21,7 @@ interface RoundEntry {
 }
 
 interface LocationState {
+  gameCode?: string
   winner?: 'blue' | 'red' | null
   winReason?: string
   scores?: { blue: number; red: number }
@@ -19,8 +32,12 @@ export default function GameOver() {
   const navigate = useNavigate()
   const location = useLocation()
   const state = (location.state as LocationState) ?? {}
-  const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [newGameLoading, setNewGameLoading] = useState(false)
+  const [analyzeOpen, setAnalyzeOpen] = useState(false)
+  const [analyzeQuestion, setAnalyzeQuestion] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysis, setAnalysis] = useState<string | null>(null)
 
   const color = state.winner === 'blue' ? '#4a9eff' : state.winner === 'red' ? '#ff6b4a' : '#8a9aaa'
   const label = state.winner ? `${state.winner.toUpperCase()} WINS` : 'GAME OVER'
@@ -31,22 +48,6 @@ export default function GameOver() {
   const topRounds = [...rounds]
     .sort((a, b) => Math.abs(b.myDelta) - Math.abs(a.myDelta))
     .slice(0, 3)
-
-  async function rematch() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/games', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const data = await res.json() as { code: string }
-      navigate(`/game/${data.code}/wait`)
-    } catch {
-      setLoading(false)
-    }
-  }
 
   function buildShareText(): string {
     const winner = state.winner ? state.winner.toUpperCase() : '?'
@@ -63,6 +64,26 @@ export default function GameOver() {
     lines.push('')
     lines.push(window.location.origin)
     return lines.join('\n')
+  }
+
+  async function analyze() {
+    if (!state.gameCode || analyzing) return
+    setAnalyzing(true)
+    setAnalysis(null)
+    try {
+      const res = await fetch(`/api/games/${state.gameCode}/analyze`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: analyzeQuestion.trim() }),
+      })
+      const data = await res.json() as { analysis?: string; error?: string }
+      setAnalysis(data.analysis ?? data.error ?? 'No analysis returned.')
+    } catch {
+      setAnalysis('Failed to reach the server.')
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   async function share() {
@@ -126,9 +147,12 @@ export default function GameOver() {
         )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button style={s.primaryButton} onClick={() => navigate('/')}>New Game</button>
-          <button style={{ ...s.ghostButton, opacity: loading ? 0.5 : 1 }} onClick={rematch} disabled={loading}>
-            {loading ? 'Creating...' : 'Play Again'}
+          <button
+            style={{ ...s.primaryButton, opacity: newGameLoading ? 0.6 : 1 }}
+            onClick={() => void startNewGame(navigate, setNewGameLoading)}
+            disabled={newGameLoading}
+          >
+            {newGameLoading ? 'Starting…' : 'New Game'}
           </button>
           <button
             style={{ ...s.ghostButton, fontSize: 12 }}
@@ -136,7 +160,49 @@ export default function GameOver() {
           >
             {copied ? '✓ Copied' : 'Share'}
           </button>
+          {state.gameCode && (
+            <button
+              style={{ ...s.ghostButton, fontSize: 12 }}
+              onClick={() => { setAnalyzeOpen(o => !o); setAnalysis(null) }}
+            >
+              Analyze
+            </button>
+          )}
         </div>
+
+        {analyzeOpen && (
+          <div style={{ marginTop: 20, borderTop: '1px solid #1e3050', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: '#4a6a8a', fontSize: 11, letterSpacing: 1, margin: 0 }}>ASK THE AI</p>
+            <textarea
+              value={analyzeQuestion}
+              onChange={e => setAnalyzeQuestion(e.target.value)}
+              placeholder="Why did I lose? Was my strategy correct? (leave blank for auto-analysis)"
+              rows={2}
+              style={{
+                background: '#0d1a2a', border: '1px solid #1e3050', borderRadius: 4,
+                color: '#c0d0e0', fontSize: 13, padding: '8px 10px', resize: 'none',
+                fontFamily: 'inherit', lineHeight: 1.5,
+              }}
+            />
+            <button
+              onClick={() => void analyze()}
+              disabled={analyzing}
+              style={{ ...s.ghostButton, fontSize: 12, opacity: analyzing ? 0.6 : 1 }}
+            >
+              {analyzing ? 'Analyzing…' : 'Analyze this game'}
+            </button>
+            {analysis && (
+              <div style={{
+                background: '#0a1520', border: '1px solid #1e3050', borderRadius: 4,
+                padding: '12px 14px', color: '#a0b8cc', fontSize: 13, lineHeight: 1.7,
+                whiteSpace: 'pre-wrap',
+              }}>
+                {analysis}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )

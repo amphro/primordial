@@ -7,6 +7,7 @@ import Lobby from './pages/Lobby'
 import WaitingRoom from './pages/WaitingRoom'
 import Game from './pages/Game'
 import GameOver from './pages/GameOver'
+import DevRun from './pages/DevRun'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -19,6 +20,7 @@ function AppRoutes() {
       <Route path="/game/:code/wait" element={user ? <WaitingRoom /> : <Navigate to="/login" replace />} />
       <Route path="/game/:code" element={user ? <Game /> : <Navigate to="/login" replace />} />
       <Route path="/game/:code/over" element={user ? <GameOver /> : <Navigate to="/login" replace />} />
+      <Route path="/dev/run" element={user ? <DevRun /> : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

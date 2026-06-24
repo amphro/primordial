@@ -27,8 +27,11 @@ export async function handleGames(request: Request, env: Env): Promise<Response>
   if (request.method === 'POST' && sub === '/add-bot') return addBot(code, env, session)
   if (request.method === 'POST' && sub === '/start') return startGame(code, env, session)
   if (request.method === 'GET' && sub === '/ws') return upgradeWebSocket(code, request, env, session)
-  if (request.method === 'POST' && sub === '/prompt') return submitPrompt(code, request, env, session)
+  if (request.method === 'POST' && sub === '/strategy') return submitStrategy(code, request, env, session)
+  if (request.method === 'POST' && sub === '/confirm')  return confirmStrategy(code, env, session)
+  if (request.method === 'POST' && sub === '/analyze') return analyzeGame(code, request, env)
   if (request.method === 'POST' && sub === '/finish') return finishGame(code, env, session)
+  if (request.method === 'POST' && sub === '/errors') return logClientError(code, request, env)
 
   return new Response('Not found', { status: 404 })
 }
@@ -172,13 +175,12 @@ async function upgradeWebSocket(code: string, request: Request, env: Env, sessio
   return stub.fetch(doRequest)
 }
 
-async function submitPrompt(code: string, request: Request, env: Env, session: SessionPayload): Promise<Response> {
+async function submitStrategy(code: string, request: Request, env: Env, session: SessionPayload): Promise<Response> {
   const body = await request.json() as { prompt: string }
   if (!body.prompt || typeof body.prompt !== 'string') return error('prompt required', 400)
   const prompt = body.prompt.slice(0, 500).trim()
   if (!prompt) return error('prompt required', 400)
 
-  // Verify player is in this game
   const player = await env.DB.prepare('SELECT color FROM game_players WHERE game_code = ? AND user_id = ?')
     .bind(code, session.userId).first<{ color: string }>()
   if (!player) return error('Not in this game', 403)
@@ -188,11 +190,36 @@ async function submitPrompt(code: string, request: Request, env: Env, session: S
 
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
-  const res = await stub.fetch(new Request('http://do/prompt', {
+  return stub.fetch(new Request('http://do/strategy', {
     method: 'POST',
-    body: JSON.stringify({ userId: session.userId, color: player.color, prompt }),
+    body: JSON.stringify({ color: player.color, prompt }),
   }))
-  return res
+}
+
+async function logClientError(code: string, request: Request, env: Env): Promise<Response> {
+  try {
+    const body = await request.json() as { message: string; round?: number }
+    await env.DB.prepare(
+      'INSERT INTO game_errors (game_code, error_type, round, message, ts) VALUES (?, ?, ?, ?, ?)',
+    ).bind(code, 'client', body.round ?? null, body.message?.slice(0, 2000) ?? '', Date.now()).run()
+  } catch { /* non-fatal */ }
+  return json({ ok: true })
+}
+
+async function confirmStrategy(code: string, env: Env, session: SessionPayload): Promise<Response> {
+  const player = await env.DB.prepare('SELECT color FROM game_players WHERE game_code = ? AND user_id = ?')
+    .bind(code, session.userId).first<{ color: string }>()
+  if (!player) return error('Not in this game', 403)
+
+  const game = await env.DB.prepare('SELECT status FROM games WHERE code = ?').bind(code).first<{ status: string }>()
+  if (!game || game.status !== 'active') return error('Game not active', 409)
+
+  const id = env.GAME_ROOM.idFromName(code)
+  const stub = env.GAME_ROOM.get(id)
+  return stub.fetch(new Request('http://do/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ color: player.color }),
+  }))
 }
 
 async function finishGame(code: string, env: Env, session: SessionPayload): Promise<Response> {
@@ -204,6 +231,19 @@ async function finishGame(code: string, env: Env, session: SessionPayload): Prom
   const stub = env.GAME_ROOM.get(id)
   await stub.fetch(new Request('http://do/finish', { method: 'POST' }))
   return json({ finished: true })
+}
+
+async function analyzeGame(code: string, request: Request, env: Env): Promise<Response> {
+  const game = await env.DB.prepare('SELECT 1 FROM games WHERE code = ?').bind(code).first()
+  if (!game) return error('Game not found', 404)
+
+  const id = env.GAME_ROOM.idFromName(code)
+  const stub = env.GAME_ROOM.get(id)
+  return stub.fetch(new Request('http://do/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: request.body,
+  }))
 }
 
 // ---- helpers ----

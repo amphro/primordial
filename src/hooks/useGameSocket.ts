@@ -1,37 +1,36 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { GameResolution } from '@shared/sim/runGame'
+import type { Strategy } from '@shared/strategy'
 
 export interface StateMsg {
   type: 'state'
-  phase: 'lobby' | 'active' | 'finished'
-  round: number
+  phase: 'lobby' | 'waiting' | 'resolved' | 'finished'
+  seed: number
   totalRounds: number
-  promptTimerMs: number
-  scores: { blue: number; red: number }
-  cells: { blue: number; red: number }
-  promptStatus: { blue: 'locked' | 'waiting'; red: 'locked' | 'waiting' }
+  gridW: number
+  gridH: number
+  strategyStatus: { blue: 'waiting' | 'locked'; red: 'waiting' | 'locked' }
+  strategyReadback: { blue: string | null; red: string | null }
   players: Array<{ userId: string; displayName: string; color: 'blue' | 'red' }>
+  deadlineAt: number
   grid: number[]
   nutrients: number[]
   armor: number[]
   starvation: number[]
-  gridW: number
-  gridH: number
-  alarmFiresAt: number
+  blueStrategy?: Strategy | null
+  redStrategy?: Strategy | null
 }
 
-export interface PlayerResolve {
-  prompt: string
-  action: string
-  zone: string
-  intensity: string
-  delta: number
+export interface StrategyLockedMsg {
+  type: 'strategy_locked'
+  color: 'blue' | 'red'
+  readback: string
+  strategy?: Strategy
+  latencyMs: number
 }
 
-export interface ResolveMsg {
-  type: 'resolve'
-  round: number
-  blue: PlayerResolve | null
-  red:  PlayerResolve | null
+export interface ResolutionMsg extends GameResolution {
+  type: 'resolution'
 }
 
 export interface GameOverMsg {
@@ -43,14 +42,15 @@ export interface GameOverMsg {
 
 export type GameMsg =
   | StateMsg
-  | ResolveMsg
+  | StrategyLockedMsg
+  | ResolutionMsg
   | GameOverMsg
   | { type: string; [key: string]: unknown }
 
 interface UseGameSocketResult {
   connected: boolean
   lastMessage: GameMsg | null
-  goneError: boolean  // true when server returned 410 (game finished)
+  goneError: boolean
 }
 
 export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg) => void): UseGameSocketResult {
@@ -59,7 +59,7 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
   const [goneError, setGoneError] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
-  const closingRef = useRef(false)  // true when we're intentionally closing (unmount/navigate)
+  const closingRef = useRef(false)
   onMessageRef.current = onMessage
 
   const connect = useCallback(() => {
@@ -68,24 +68,13 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
     const ws = new WebSocket(`${protocol}//${location.host}/api/games/${code}/ws`)
     wsRef.current = ws
 
-    ws.onopen  = () => {
-      setConnected(true)
-      closingRef.current = false
-    }
+    ws.onopen  = () => { setConnected(true); closingRef.current = false }
     ws.onerror = (e) => console.error('[ws] error', e)
     ws.onclose = (e) => {
       setConnected(false)
       console.warn('[ws] closed code=%d reason=%s', e.code, e.reason || '(none)')
-
-      // Don't reconnect on intentional close (component unmounting/navigating away)
       if (closingRef.current) return
-
-      // Explicit server game-over close
-      if (e.code === 4010 || e.code === 4410) {
-        setGoneError(true)
-        return
-      }
-
+      if (e.code === 4010 || e.code === 4410) { setGoneError(true); return }
       setTimeout(connect, 2000)
     }
     ws.onmessage = (event) => {

@@ -4,76 +4,60 @@ import { s } from '../lib/styles'
 interface Props {
   gameCode: string
   myColor: 'blue' | 'red'
-  myLocked: boolean
+  submitted: boolean
+  myReadback: string | null
   opponentLocked: boolean
-  disabled?: boolean
-  onLocked: () => void
 }
 
-export default function PromptInput({ gameCode, myColor, myLocked, opponentLocked, disabled, onLocked }: Props) {
+export default function StrategyInput({ gameCode, myColor, submitted, myReadback, opponentLocked }: Props) {
   const [prompt, setPrompt] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [classification, setClassification] = useState<{ action: string; zone: string; intensity: string } | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (!myLocked) {
-      setPrompt('')
-      setError('')
-      setSubmitting(false)
-      setClassification(null)
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
-  }, [myLocked])
+    if (!submitted) setTimeout(() => inputRef.current?.focus(), 100)
+  }, [submitted])
 
   async function submit() {
-    if (!prompt.trim() || submitting || myLocked) return
+    if (!prompt.trim() || submitting || submitted) return
     setSubmitting(true)
     setError('')
     try {
-      const res = await fetch(`/api/games/${gameCode}/prompt`, {
+      const res = await fetch(`/api/games/${gameCode}/strategy`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt.trim() }),
       })
       if (!res.ok) {
-        const data = await res.json() as { error?: string }
-        throw new Error(data.error ?? 'Failed')
+        let msg = `Server error (${res.status})`
+        try { const d = await res.json() as { error?: string }; msg = d.error ?? msg } catch { /* non-JSON body */ }
+        throw new Error(msg)
       }
-      const data = await res.json() as { queued: boolean; classification?: { action: string; zone: string; intensity: string } }
-      if (data.classification) setClassification(data.classification)
-      onLocked()
     } catch (e) {
       setError((e as Error).message)
       setSubmitting(false)
     }
+    // Don't set submitting=false on success — the strategy_locked WS message will update state
   }
 
   const accentColor = myColor === 'blue' ? '#4a9eff' : '#ff6b4a'
 
-  if (disabled) {
-    return <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2a3a4a', fontSize: 12 }}>Waiting…</div>
-  }
-
-  if (myLocked) {
+  if (submitted) {
     return (
-      <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-          <span style={{ color: accentColor, fontSize: 13, letterSpacing: 1 }}>Locked in</span>
-          {classification && (
-            <span style={{ color: '#8a9aaa', fontSize: 11, letterSpacing: 1 }}>
-              → {classification.action} · {classification.zone} · {classification.intensity}
-            </span>
-          )}
-          <span style={{ color: '#2a3a4a', fontSize: 12, marginLeft: 'auto' }}>
-            {opponentLocked ? '· opponent locked too' : '· waiting for opponent'}
+          <span style={{ color: accentColor, fontSize: 13, letterSpacing: 1 }}>Strategy locked</span>
+          <span style={{ color: '#2a3a4a', fontSize: 11, marginLeft: 'auto' }}>
+            {opponentLocked ? '· opponent ready' : '· waiting for opponent'}
           </span>
         </div>
-        {!classification && submitting && (
-          <div style={{ color: '#3a5a7a', fontSize: 11, paddingLeft: 20 }}>classifying…</div>
+        {myReadback && (
+          <div style={{ paddingLeft: 18, color: '#4a6a8a', fontSize: 12, fontStyle: 'italic' }}>
+            "{myReadback}"
+          </div>
         )}
       </div>
     )
@@ -87,16 +71,11 @@ export default function PromptInput({ gameCode, myColor, myLocked, opponentLocke
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void submit() } }}
-          placeholder="Guide your cells — collect nutrients, attack, defend… but they have a mind of their own."
+          placeholder="Describe your strategy — when to grow, hunt, armor, or pulse…"
           maxLength={500}
-          rows={2}
-          style={{
-            ...s.input,
-            resize: 'none',
-            fontSize: 14,
-            lineHeight: 1.5,
-            flex: 1,
-          }}
+          rows={5}
+          disabled={submitting}
+          style={{ ...s.input, resize: 'none', fontSize: 14, lineHeight: 1.5, flex: 1, opacity: submitting ? 0.5 : 1 }}
         />
         <button
           onClick={() => void submit()}
@@ -107,12 +86,16 @@ export default function PromptInput({ gameCode, myColor, myLocked, opponentLocke
             padding: '10px 20px',
             fontSize: 13,
             flexShrink: 0,
-            opacity: (!prompt.trim() || submitting) ? 0.4 : 1,
-            height: 52,
+            opacity: submitting ? 0.7 : (!prompt.trim() ? 0.4 : 1),
+            height: 108,
           }}
         >
-          {submitting ? '...' : 'Lock In'}
+          {submitting ? 'Thinking…' : 'Set Strategy'}
         </button>
+      </div>
+      <div style={{ color: '#4a6a8a', fontSize: 11, lineHeight: 1.6 }}>
+        ARMOR counters PULSE &nbsp;·&nbsp; HUNT bypasses ARMOR &nbsp;·&nbsp; GROW eats nutrients to multiply.
+        You don't know what your opponent will do — set your rules, then start the battle.
       </div>
       {error && <p style={{ color: '#ff6b6b', fontSize: 12, margin: 0 }}>{error}</p>}
     </div>

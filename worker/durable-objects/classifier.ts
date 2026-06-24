@@ -12,7 +12,15 @@ const DEFAULT: Classification = { action: 'GROW', zone: 'ALL', intensity: 'CAUTI
 // Re-add TOXIN/SCATTER/WALL/FEAST here when their simulation branches ship.
 const VALID_ACTIONS = new Set(['GROW', 'ARMOR', 'HUNT', 'PULSE'])
 const VALID_ZONES   = new Set(['NORTH', 'SOUTH', 'EAST', 'WEST', 'ALL'])
-const VALID_INTENS  = new Set(['CAUTIOUS', 'NORMAL', 'AGGRESSIVE'])
+
+// Keyword-based intensity override — deterministic, takes precedence over the LLM's field.
+// The 8B model defaults to CAUTIOUS almost always; keywords are more reliable.
+function intensityFromKeywords(prompt: string): Intensity | null {
+  const p = prompt.toLowerCase()
+  if (/\b(rapidly|fast|faster|aggressive|rush|all[- ]?out|hard|max|blitz|overwhelm|surge|push|fully|completely|as fast|sprint)\b/.test(p)) return 'AGGRESSIVE'
+  if (/\b(slowly|slow|gently|gentle|steady|careful|cautious|safe|conserve|a bit|slightly|carefully)\b/.test(p)) return 'CAUTIOUS'
+  return null
+}
 
 const SYSTEM_PROMPT = `You classify a player's natural language prompt into three game dimensions.
 
@@ -24,10 +32,19 @@ ACTION (pick exactly one):
 
 ZONE (pick exactly one): NORTH (top half), SOUTH (bottom half), EAST (right half), WEST (left half), ALL (everywhere)
 
-INTENSITY (pick exactly one): CAUTIOUS (reduced effect, safe), NORMAL (standard), AGGRESSIVE (boosted effect, risk friendly fire)
+INTENSITY (pick exactly one):
+- CAUTIOUS: slow, gentle, careful, safe, conserve, a bit, slightly
+- NORMAL: standard pace, no modifiers
+- AGGRESSIVE: fast, rapidly, rush, max, blitz, all-out, overwhelm, hard
+
+Examples:
+- "grow rapidly" → {"action":"GROW","zone":"ALL","intensity":"AGGRESSIVE"}
+- "defend the south carefully" → {"action":"ARMOR","zone":"SOUTH","intensity":"CAUTIOUS"}
+- "attack from the east" → {"action":"HUNT","zone":"EAST","intensity":"NORMAL"}
+- "nuke them" → {"action":"PULSE","zone":"ALL","intensity":"AGGRESSIVE"}
 
 Respond with ONLY valid JSON, nothing else: {"action":"GROW","zone":"ALL","intensity":"NORMAL"}
-If unclear, default: action=GROW, zone=ALL, intensity=CAUTIOUS`
+If unclear: action=GROW, zone=ALL, intensity=NORMAL`
 
 export async function classifyPrompt(
   prompt: string,
@@ -45,18 +62,25 @@ export async function classifyPrompt(
 
     const latencyMs = Date.now() - t0
     const text = result.response ?? ''
-    const jsonMatch = text.match(/\{[^}]+\}/)
-    if (!jsonMatch) return { classification: DEFAULT, latencyMs }
 
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>
+    // Try each {...} match so stray braces before the real JSON don't abort the parse
+    let parsed: Record<string, string> | null = null
+    for (const m of text.matchAll(/\{[^}]+\}/g)) {
+      try { parsed = JSON.parse(m[0]) as Record<string, string>; break } catch { /* try next */ }
+    }
+    if (!parsed) return { classification: DEFAULT, latencyMs }
+
     const action = (parsed.action ?? '').toUpperCase()
     const zone   = (parsed.zone   ?? '').toUpperCase()
-    const intensity = (parsed.intensity ?? '').toUpperCase()
+
+    // Keyword extraction overrides the LLM's intensity field — the 8B model defaults
+    // to CAUTIOUS regardless of prompt urgency, so we can't trust its intensity output.
+    const intensity: Intensity = intensityFromKeywords(prompt) ?? 'NORMAL'
 
     const classification: Classification = {
-      action:    VALID_ACTIONS.has(action)   ? action as Action   : DEFAULT.action,
-      zone:      VALID_ZONES.has(zone)       ? zone as Zone       : DEFAULT.zone,
-      intensity: VALID_INTENS.has(intensity) ? intensity as Intensity : DEFAULT.intensity,
+      action: VALID_ACTIONS.has(action) ? action as Action : DEFAULT.action,
+      zone:   VALID_ZONES.has(zone)     ? zone as Zone     : DEFAULT.zone,
+      intensity,
     }
     return { classification, latencyMs }
   } catch {

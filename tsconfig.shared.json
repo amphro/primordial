@@ -8,8 +8,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "composite": true,
-    "outDir": "./.tsbuild/worker"
+    "outDir": "./.tsbuild/shared"
   },
-  "include": ["worker/**/*", "worker-configuration.d.ts"],
-  "references": [{ "path": "./tsconfig.shared.json" }]
+  "include": ["shared/**/*"]
 }
