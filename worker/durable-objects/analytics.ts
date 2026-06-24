@@ -46,6 +46,8 @@ export function writeTickResolved(ae: AnalyticsEngineDataset, e: TickResolvedEve
   } catch { /* non-fatal */ }
 }
 
+// Not currently called — if wired in, rawPrompt goes into analytics blobs, which contradicts
+// the privacy policy ("no personal identifiers attached"). Remove or redact before enabling.
 export function writePromptClassified(ae: AnalyticsEngineDataset, e: PromptClassifiedEvent): void {
   try {
     ae.writeDataPoint({

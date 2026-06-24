@@ -16,7 +16,8 @@ Two colonies of cells fight for control of a petri dish. Before the battle start
 - **Runtime:** Cloudflare Workers
 - **Game state:** Cloudflare Durable Objects (one per room, WebSocket hub)
 - **Database:** Cloudflare D1 (users, games)
-- **Sessions/KV:** Cloudflare KV
+- **Sessions:** Stateless signed cookies (7-day expiry)
+- **KV:** Cloudflare KV (balance config overrides)
 - **AI:** Cloudflare Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`)
 
 ---

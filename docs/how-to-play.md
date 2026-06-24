@@ -91,8 +91,8 @@ Counters only apply when zones overlap.
 
 ## Winning
 
-- **Eliminate all enemy cells** to win before round 20.
-- **After 20 rounds**, whoever has more cells wins.
+- **Eliminate all enemy cells** to win immediately.
+- **At the end of round 20**, whoever has more cells wins. Ties go to blue (the first player).
 
 ---
 

@@ -16,7 +16,7 @@ title: Privacy Policy — PRIMORDIAL
 
 **Analytics:** Anonymous gameplay events (round count, actions used, game outcomes) via Cloudflare Analytics Engine. No personal identifiers attached.
 
-**Session:** A session token stored in a cookie, used to keep you logged in. Expires when you close the browser or log out.
+**Session:** A session token stored in a cookie, used to keep you logged in. Expires after 7 days or when you log out.
 
 ## How it's used
 
