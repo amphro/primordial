@@ -65,6 +65,33 @@ Bumped `SIM_VERSION` → `'3'`.
 
 ---
 
+## Day mode (light theme)
+
+- [ ] Define `[data-theme="light"]` block in `src/index.css` with light equivalents for all `--clr-*` vars
+- [ ] Toggle button in header + `localStorage` persistence
+- [ ] Sweep remaining hardcoded bg colors in `Game.tsx` to CSS vars (`#080c14`, `#0a1420`, etc.)
+- [ ] Decide on `GameCanvas.tsx` cell colors — currently hardcoded constants; either tokenize or keep canvas dark regardless of theme
+
+**Note:** CSS custom property foundation is already in place (`src/index.css`). Estimated ~2–3h once a light palette is chosen.
+
+---
+
+## Mobile layout
+
+Viewport meta is correct. ScoreBar is already responsive. Everything else needs work:
+
+- [ ] `Game.tsx`: stack canvas above rounds sidebar at ≤600px (`flex-direction: column`); all 5 `maxWidth: 660` containers need responsive fallback
+- [ ] `GameCanvas.tsx`: canvas prop `size={480}` — canvas element already has `width: 100%` so it scales, but the parent layout needs fixing first
+- [ ] `StatusBar.tsx`: four `minWidth` sections sum to ~330px; reflow into two rows or a scrollable strip on mobile
+- [ ] `PromptInput.tsx`: textarea + submit button are side-by-side with `height: 108` on the button; need to stack vertically
+- [ ] Speed control buttons row: 4 buttons + skip, unconstrained — needs `flex-wrap` or collapsing
+- [ ] Bump minimum tap-target font sizes to 12px app-wide (several 11px labels throughout)
+- [ ] Add `@media` rules in `src/index.css` (foundation is there, zero queries exist today)
+
+**Note:** Real layout rewrite — desktop-first throughout. Estimated ~6–8h. Treat as its own session.
+
+---
+
 ## Cross-cutting principles
 
 **Separate RNG streams per subsystem** — board events and special-nutrient placement each
