@@ -4,6 +4,9 @@ import { makeRng } from '../rng'
 import { evaluateStrategy, computeMetrics } from '../strategy'
 import { initGrid, simulateTick } from './simulation'
 import type { ActionSpec, CounterEvent } from './simulation'
+import { generateEvents, applyBoardEvent } from './events'
+import type { BoardEvent } from './events'
+export type { BoardEvent }
 
 export const SIM_VERSION = '2'
 
@@ -28,6 +31,7 @@ export interface GameResolution {
   winner: 'blue' | 'red'
   finalScores: { blue: number; red: number }
   rounds: RoundRecord[]
+  events: BoardEvent[]
 }
 
 export function runGame(
@@ -39,6 +43,7 @@ export function runGame(
   const rng = makeRng(seed)
   let state = initGrid(config, rng)
   const rounds: RoundRecord[] = []
+  const events = generateEvents(seed, config)
 
   for (let round = 0; round < config.totalRounds; round++) {
     const bm = computeMetrics(state, 'blue', round, config)
@@ -48,6 +53,11 @@ export function runGame(
 
     const result = simulateTick(state, round, config, blueSpec, redSpec, rng)
     state = result.state
+
+    // Apply board events for this round (uses tick RNG for placement randomness)
+    for (const ev of events) {
+      if (ev.round === round) applyBoardEvent(state, ev, config, rng)
+    }
 
     let totalNutrients = 0
     for (let i = 0; i < state.nutrients.length; i++) if (state.nutrients[i] > 0) totalNutrients++
@@ -68,6 +78,7 @@ export function runGame(
           red:  t === 0 ? 50 : Math.round(result.redCells  / t * 100),
         },
         rounds,
+        events,
       }
     }
   }
@@ -84,5 +95,6 @@ export function runGame(
     winner: last.blueCells >= last.redCells ? 'blue' : 'red',
     finalScores: { blue: bluePct, red: 100 - bluePct },
     rounds,
+    events,
   }
 }

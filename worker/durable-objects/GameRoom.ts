@@ -4,6 +4,7 @@ import { initGrid } from '../../shared/sim/simulation'
 import type { GridState } from '../../shared/sim/simulation'
 import { runGame } from '../../shared/sim/runGame'
 import type { GameResolution } from '../../shared/sim/runGame'
+import { generateEvents } from '../../shared/sim/events'
 import { generateStrategy } from './strategist'
 import type { Strategy } from '../../shared/strategy'
 import { makeRng } from '../../shared/rng'
@@ -451,6 +452,7 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
       armor:      this.gridState ? Array.from(this.gridState.armor)      : [],
       starvation: this.gridState ? Array.from(this.gridState.starvation) : [],
       toxin:      this.gridState ? Array.from(this.gridState.toxin)      : [],
+      events:     generateEvents(this.seed, this.config),
     }
   }
 

@@ -40,14 +40,14 @@ rule-sets cycle cleanly. Overlapping short+long rules may start mid-cycle — ac
 
 ---
 
-## Phase 3 — Board events (combo cadence, seed-deterministic)
+## Phase 3 — Board events (combo cadence, seed-deterministic) ✅
 
-- [ ] New `shared/sim/events.ts`: `generateEvents(seed, config)` using a separate RNG stream (`seed ^ constant`)
-  - Event kinds: nutrient bloom (zone), drought, toxic fog (zone)
-  - Schedule: 2–4 one-off events at seed-chosen rounds + one recurring pulse every N rounds
-- [ ] Apply events deterministically in the `runGame.ts` tick loop at the scheduled round
-- [ ] Expose event schedule in `buildStateMsg`
-- [ ] Render read-only "This game's events" panel in the strategy phase
+- [x] New `shared/sim/events.ts`: `generateEvents(seed, config)` using separate RNG stream (`seed ^ 0xB0A2D`)
+  - Event kinds: nutrient_bloom, drought
+  - Schedule: 2 one-off events (bloom+drought) at seed-chosen rounds + recurring nutrient bloom every 4–6 rounds
+- [x] Applied deterministically in `runGame.ts` tick loop AND client animation loop (same RNG order = identical results)
+- [x] Events included in `GameResolution` and exposed via `buildStateMsg`
+- [x] "BOARD EVENTS" panel rendered in strategy phase UI (R{n}: Kind / zone / recurring indicator)
 
 ---
 

@@ -13,6 +13,7 @@ import { initGrid, simulateTick } from '@shared/sim/simulation'
 import type { GridState } from '@shared/sim/simulation'
 import type { GameResolution, RoundRecord } from '@shared/sim/runGame'
 import { SIM_VERSION } from '@shared/sim/runGame'
+import { applyBoardEvent } from '@shared/sim/events'
 import type { Strategy } from '@shared/strategy'
 
 const BASE_INTERVAL_MS = 5000  // 5s per round at 1× speed
@@ -117,6 +118,9 @@ export default function Game() {
       const r = res.rounds[i]
       const result = simulateTick(state, r.round, res.config, r.blueSpec, r.redSpec, rng)
       state = result.state
+      for (const ev of (res.events ?? [])) {
+        if (ev.round === r.round) applyBoardEvent(state, ev, res.config, rng)
+      }
     }
     setLiveGrid(Array.from(state.grid))
     setLiveNutrients(Array.from(state.nutrients))
@@ -156,6 +160,9 @@ export default function Game() {
       const r = res.rounds[i]
       const result = simulateTick(state, r.round, res.config, r.blueSpec, r.redSpec, rng)
       state = result.state
+      for (const ev of (res.events ?? [])) {
+        if (ev.round === r.round) applyBoardEvent(state, ev, res.config, rng)
+      }
     }
     animSimRef.current = { state, rng }
     setLiveGrid(Array.from(state.grid))
@@ -215,6 +222,9 @@ export default function Game() {
       const r = res.rounds[nextRound]
       const { state, rng: rngFn } = animSimRef.current
       const result = simulateTick(state, r.round, res.config, r.blueSpec, r.redSpec, rngFn)
+      for (const ev of (res.events ?? [])) {
+        if (ev.round === r.round) applyBoardEvent(result.state, ev, res.config, rngFn)
+      }
       animSimRef.current = { state: result.state, rng: rngFn }
 
       setLiveGrid(Array.from(result.state.grid))
@@ -484,6 +494,25 @@ export default function Game() {
           >
             See Results →
           </button>
+        </div>
+      )}
+
+      {/* Board events panel — shown during strategy phase */}
+      {!resolution && gameState?.events && gameState.events.length > 0 && (
+        <div style={{ width: '100%', maxWidth: 660, background: '#06090f', border: '1px solid #1a2a3a', borderRadius: 4, padding: '8px 12px' }}>
+          <div style={{ color: '#5a7a6a', fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>BOARD EVENTS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {gameState.events.map((ev, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, fontFamily: 'monospace' }}>
+                <span style={{ color: '#3a5a4a', minWidth: 26 }}>R{ev.round + 1}</span>
+                <span style={{ color: ev.kind === 'nutrient_bloom' ? '#a0c840' : '#c88040' }}>
+                  {ev.kind === 'nutrient_bloom' ? '⬡ Nutrient Bloom' : '☀ Drought'}
+                </span>
+                <span style={{ color: '#2a3a4a' }}>{ev.zone !== 'ALL' ? ev.zone.toLowerCase() : 'all zones'}</span>
+                {ev.period && <span style={{ color: '#2a3a4a', fontSize: 9 }}>↻ every {ev.period}</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { GameResolution } from '@shared/sim/runGame'
+import type { GameResolution, BoardEvent } from '@shared/sim/runGame'
 import type { Strategy } from '@shared/strategy'
 
 export interface StateMsg {
@@ -18,6 +18,7 @@ export interface StateMsg {
   armor: number[]
   starvation: number[]
   toxin?: number[]
+  events?: BoardEvent[]
   blueStrategy?: Strategy | null
   redStrategy?: Strategy | null
 }
