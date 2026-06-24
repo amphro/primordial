@@ -15,19 +15,17 @@ rule-sets cycle cleanly. Overlapping short+long rules may start mid-cycle — ac
 
 ---
 
-## Phase 1 — Activate dormant actions + full counter-web
+## Phase 1 — Activate dormant actions + full counter-web ✅
 
-- [ ] **WALL**: spawn wall tiles around the front; decay already runs
-- [ ] **SCATTER**: reproduce ignoring nutrients (`scatter.ignoreNutrients`)
-- [ ] **FEAST**: apply nutrient/repro multipliers this tick
-- [ ] **TOXIN**: new `toxin: Uint8Array` GridState layer; marks tiles, kills enemies entering, decays
-  - Must thread through: `persistGridState`, constructor rehydration, `buildStateMsg`, WS type, renderer
-- [ ] **Counter-web**: implement all 8 relations
-  - PULSE>SCATTER, ARMOR>PULSE, HUNT>TOXIN, TOXIN>GROW, WALL>HUNT, SCATTER>WALL, FEAST>ARMOR, GROW>FEAST
-  - Currently only ARMOR>PULSE and HUNT>ARMOR are implemented
-- [ ] DSL: add TOXIN/SCATTER/WALL/FEAST to `VALID_ACTIONS`
-- [ ] Strategist system prompt: document all 8 actions + counter-web so LLM can choose them
-- [ ] Reconcile `armor.aggressiveReproPenalty` (config.ts) vs `reproSpeedPenaltyPct` (GAME-DESIGN.md)
+- [x] **WALL**: spawn wall tiles around the front; decay already runs
+- [x] **SCATTER**: reproduce ignoring nutrients
+- [x] **FEAST**: apply `reproMultiplier` extra spawns per nutrient this tick
+- [x] **TOXIN**: new `toxin: Uint8Array` GridState layer; marks tiles, kills enemies entering, decays
+  - Threaded through: `persistGridState`, constructor rehydration, `buildStateMsg`, WS type, renderer
+- [x] **Counter-web**: all 9 relations implemented (ARMOR>PULSE, HUNT>ARMOR, PULSE>SCATTER, HUNT>TOXIN, TOXIN>GROW, WALL>HUNT, SCATTER>WALL, FEAST>ARMOR, GROW>FEAST)
+- [x] DSL: added TOXIN/SCATTER/WALL/FEAST to `VALID_ACTIONS`
+- [x] Strategist system prompt: documents all 8 actions + counter-web
+- [x] Renamed `armor.aggressiveReproPenalty` → `armor.reproSpeedPenaltyPct` (matches GAME-DESIGN.md)
 
 **Special actions are free in this phase** — resource-gating comes in Phase 4.
 

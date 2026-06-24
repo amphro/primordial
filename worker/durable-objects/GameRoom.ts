@@ -74,6 +74,7 @@ export class GameRoom extends DurableObject<Env> {
       const starvation       = await ctx.storage.get<Uint8Array>('starvation')
       const armor            = await ctx.storage.get<Uint8Array>('armor')
       const wallAge          = await ctx.storage.get<Uint8Array>('wallAge')
+      const toxin            = await ctx.storage.get<Uint8Array>('toxin')
 
       if (grid && nutrients) {
         const size = this.config.gridWidth * this.config.gridHeight
@@ -84,6 +85,7 @@ export class GameRoom extends DurableObject<Env> {
           starvation:       starvation       ?? new Uint8Array(size),
           armor:            armor            ?? new Uint8Array(size),
           wallAge:          wallAge          ?? new Uint8Array(size),
+          toxin:            toxin            ?? new Uint8Array(size),
         }
       }
 
@@ -448,6 +450,7 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
       nutrients:  this.gridState ? Array.from(this.gridState.nutrients)  : [],
       armor:      this.gridState ? Array.from(this.gridState.armor)      : [],
       starvation: this.gridState ? Array.from(this.gridState.starvation) : [],
+      toxin:      this.gridState ? Array.from(this.gridState.toxin)      : [],
     }
   }
 
@@ -486,6 +489,7 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     await this.ctx.storage.put('starvation',        this.gridState.starvation)
     await this.ctx.storage.put('armor',             this.gridState.armor)
     await this.ctx.storage.put('wallAge',           this.gridState.wallAge)
+    await this.ctx.storage.put('toxin',             this.gridState.toxin)
   }
 
   private broadcast(message: unknown, excludeUserId?: string): void {

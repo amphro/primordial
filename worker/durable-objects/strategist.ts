@@ -4,16 +4,21 @@ import { DEFAULT_CONFIG } from '../../shared/config'
 
 const SYSTEM_PROMPT = `You are a strategy AI for a cellular automaton territory game.
 
-Two sides (blue, red) compete on a grid. Each round, cells can GROW, HUNT, ARMOR, or PULSE.
-You generate a Strategy: priority-ordered conditional rules + a fallback action.
+Two sides (blue, red) compete on a grid. Each round you choose one action for all your cells.
+You generate a Strategy: a list of conditional rules + a fallback action.
 
-ACTIONS (only these are implemented):
-- GROW: cells reproduce extra aggressively near nutrients
-- HUNT: cells move toward and attack nearby enemies
-- ARMOR: cells gain shields (reduces PULSE damage; HUNT bypasses armor)
-- PULSE: shockwave kills a % of enemies in radius (ARMOR counters this)
+ACTIONS:
+- GROW: extra reproduction near nutrients (strong early expansion)
+- HUNT: cells chase and capture nearby enemies (offensive)
+- ARMOR: cells gain shields that absorb hits (defensive; counters PULSE)
+- PULSE: shockwave kills % of enemies in a radius (countered by ARMOR)
+- TOXIN: marks tiles in a radius with poison; enemy cells on those tiles die each tick (3-tick duration)
+- SCATTER: cells reproduce without needing nutrients (good for starved areas)
+- WALL: spawn barrier tiles in front of your cells facing the enemy (3-tick duration)
+- FEAST: cells near nutrients reproduce multiple times this tick (burst growth)
 
-Counter chain: ARMOR beats PULSE, HUNT beats ARMOR.
+Counter web (winner > loser — winner's effectiveness is preserved; loser's is reduced):
+ARMOR>PULSE, HUNT>ARMOR, PULSE>SCATTER, HUNT>TOXIN, TOXIN>GROW, WALL>HUNT, SCATTER>WALL, FEAST>ARMOR, GROW>FEAST
 
 ZONES: ALL, NORTH, SOUTH, EAST, WEST (board halves)
 INTENSITIES: CAUTIOUS (weaker, safe), NORMAL, AGGRESSIVE (stronger, 30% friendly fire)
@@ -26,7 +31,7 @@ METRICS you can check in conditions:
 - nutrientDensity: fraction of nutrients near my cells (0–1)
 
 Operators: "lt" (<), "lte" (≤), "gt" (>), "gte" (≥)
-Rules: max 6; all conditions in a rule are AND'd. First matching rule fires.
+Rules: max 6; all conditions in a rule are AND'd. When multiple rules match the same round, they cycle in order (round % matchCount), so all matching rules get turns.
 
 Output ONLY valid JSON — no prose:
 {
@@ -127,11 +132,15 @@ function strategyReadback(s: Strategy): string {
 
 function actionDesc(a: string): string {
   switch (a) {
-    case 'GROW':  return 'expand'
-    case 'HUNT':  return 'attack enemies'
-    case 'ARMOR': return 'shield cells'
-    case 'PULSE': return 'shockwave'
-    default:      return a.toLowerCase()
+    case 'GROW':    return 'expand'
+    case 'HUNT':    return 'attack enemies'
+    case 'ARMOR':   return 'shield cells'
+    case 'PULSE':   return 'shockwave'
+    case 'TOXIN':   return 'poison tiles'
+    case 'SCATTER': return 'scatter without nutrients'
+    case 'WALL':    return 'build walls'
+    case 'FEAST':   return 'feast on nutrients'
+    default:        return a.toLowerCase()
   }
 }
 

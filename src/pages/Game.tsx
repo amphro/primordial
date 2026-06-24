@@ -42,6 +42,7 @@ export default function Game() {
   const [liveNutrients, setLiveNutrients] = useState<number[]>([])
   const [liveArmor, setLiveArmor] = useState<number[]>([])
   const [liveStarvation, setLiveStarvation] = useState<number[]>([])
+  const [liveToxin, setLiveToxin] = useState<number[]>([])
   const [resolveAnim, setResolveAnim] = useState<AnimEvent | null>(null)
   const [liveCaption, setLiveCaption] = useState<{ blueTrace: string; redTrace: string } | null>(null)
   const [roundHistory, setRoundHistory] = useState<RoundRecord[]>([])
@@ -120,6 +121,7 @@ export default function Game() {
     setLiveNutrients(Array.from(state.nutrients))
     setLiveArmor(Array.from(state.armor))
     setLiveStarvation(Array.from(state.starvation))
+    setLiveToxin(Array.from(state.toxin))
     animRoundRef.current = target
     setAnimRound(target)
     const r = res.rounds[target]
@@ -159,6 +161,7 @@ export default function Game() {
     setLiveNutrients(Array.from(state.nutrients))
     setLiveArmor(Array.from(state.armor))
     setLiveStarvation(Array.from(state.starvation))
+    setLiveToxin(Array.from(state.toxin))
     animRoundRef.current = res.rounds.length - 1
     setAnimRound(animRoundRef.current)
     setLiveCaption(null)
@@ -192,6 +195,7 @@ export default function Game() {
     setLiveNutrients(Array.from(startState.nutrients))
     setLiveArmor(Array.from(startState.armor))
     setLiveStarvation(Array.from(startState.starvation))
+    setLiveToxin(Array.from(startState.toxin))
     animRoundRef.current = -1
     setAnimRound(-1)
     roundHistoryRef.current = []
@@ -216,6 +220,7 @@ export default function Game() {
       setLiveNutrients(Array.from(result.state.nutrients))
       setLiveArmor(Array.from(result.state.armor))
       setLiveStarvation(Array.from(result.state.starvation))
+      setLiveToxin(Array.from(result.state.toxin))
       animRoundRef.current = nextRound
       setAnimRound(nextRound)
       setLiveCaption({ blueTrace: r.blueTrace, redTrace: r.redTrace })
@@ -254,6 +259,7 @@ export default function Game() {
         setLiveNutrients(s.nutrients)
         setLiveArmor(s.armor)
         setLiveStarvation(s.starvation)
+        setLiveToxin(s.toxin ?? [])
       }
       // Restore strategy review state on reconnect
       if (mc && !resolutionRef.current) {
@@ -394,6 +400,7 @@ export default function Game() {
             nutrients={liveNutrients}
             armor={liveArmor}
             starvation={liveStarvation}
+            toxin={liveToxin}
             anim={resolveAnim}
             gridW={gridW}
             gridH={gridH}

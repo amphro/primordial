@@ -119,7 +119,7 @@ export function evaluateStrategy(strategy: Strategy, metrics: Metrics): EvalResu
 
 // ── Validation (for LLM output) ───────────────────────────────────────────────
 
-const VALID_ACTIONS     = new Set(['GROW', 'HUNT', 'ARMOR', 'PULSE'])
+const VALID_ACTIONS     = new Set(['GROW', 'HUNT', 'ARMOR', 'PULSE', 'TOXIN', 'SCATTER', 'WALL', 'FEAST'])
 const VALID_ZONES       = new Set(['NORTH', 'SOUTH', 'EAST', 'WEST', 'ALL'])
 const VALID_INTENSITIES = new Set(['CAUTIOUS', 'NORMAL', 'AGGRESSIVE'])
 const VALID_METRICS     = new Set<string>(['round', 'enemyDistance', 'nutrientDensity', 'cellRatio', 'myCells'])

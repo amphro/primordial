@@ -17,6 +17,7 @@ export interface StateMsg {
   nutrients: number[]
   armor: number[]
   starvation: number[]
+  toxin?: number[]
   blueStrategy?: Strategy | null
   redStrategy?: Strategy | null
 }

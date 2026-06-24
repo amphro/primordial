@@ -18,6 +18,7 @@ interface Props {
   nutrients: number[]
   armor?: number[]
   starvation?: number[]
+  toxin?: number[]
   anim?: AnimEvent | null
   gridW?: number
   gridH?: number
@@ -114,7 +115,7 @@ function drawEffect(ctx: CanvasRenderingContext2D, effect: AnimEffect, t: number
 
 const BIRTH_DURATION = 650  // ms for new-cell bloom
 
-export default function GameCanvas({ grid, nutrients, armor, starvation, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
+export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<AnimEvent | null>(null)
@@ -173,7 +174,21 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, anim, g
       ctx.arc(x, y, Math.max(1, cw * 0.22), 0, Math.PI * 2)
       ctx.fill()
     }
-  }, [grid, nutrients, armor, starvation, gridW, gridH, size])
+
+    // Draw toxin overlay (green tint; brightness proportional to remaining ticks)
+    if (toxin) {
+      for (let i = 0; i < toxin.length; i++) {
+        const tv = toxin[i]
+        if (tv === 0) continue
+        const ticks = tv & 0x7F
+        const alpha = (ticks / 7) * 0.38
+        const x = (i % gridW) * cw
+        const y = Math.floor(i / gridW) * ch
+        ctx.fillStyle = `rgba(60, 230, 80, ${alpha})`
+        ctx.fillRect(x, y, cw, ch)
+      }
+    }
+  }, [grid, nutrients, armor, starvation, toxin, gridW, gridH, size])
 
   // Animation overlay — zone effects + per-cell birth blooms
   useEffect(() => {

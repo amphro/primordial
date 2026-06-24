@@ -21,6 +21,8 @@ export interface GridState {
   starvation: Uint8Array       // ticks this cell has lacked a nutrient
   armor: Uint8Array            // extra hits before dying (0=none)
   wallAge: Uint8Array          // ticks this wall has existed (0=not a wall)
+  // bit 7 = owner (0=blue, 1=red); bits 0–6 = ticks remaining; 0 = no toxin
+  toxin: Uint8Array
 }
 
 export interface CounterEvent {
@@ -150,6 +152,7 @@ export function initGrid(config: GameConfig, rng: () => number): GridState {
   const starvation = new Uint8Array(size)
   const armor = new Uint8Array(size)
   const wallAge = new Uint8Array(size)
+  const toxin = new Uint8Array(size)
 
   const blueMaxX = Math.floor(w / 4)
   const redMinX  = w - Math.floor(w / 4) - 1
@@ -185,7 +188,7 @@ export function initGrid(config: GameConfig, rng: () => number): GridState {
     }
   }
 
-  return { grid, nutrients, nutrientCooldown, starvation, armor, wallAge }
+  return { grid, nutrients, nutrientCooldown, starvation, armor, wallAge, toxin }
 }
 
 // ── action effects ────────────────────────────────────────────────────────────
@@ -209,10 +212,25 @@ function killPctForPulse(intensity: Intensity, killPct: number, effectMult: numb
   return killPct
 }
 
-function applyArmor(state: GridState, player: 'blue' | 'red', zone: Zone, intensity: Intensity, config: GameConfig): void {
+function shuffle<T>(arr: T[], rng: () => number): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+}
+
+function applyArmor(
+  state: GridState,
+  player: 'blue' | 'red',
+  zone: Zone,
+  intensity: Intensity,
+  config: GameConfig,
+  feastCountered: boolean,
+): void {
   const { gridWidth: w, gridHeight: h, actions: { armor: ac } } = config
   const color = myColor(player)
-  const hitsToGrant = intensity === 'CAUTIOUS' ? 1 : intensity === 'NORMAL' ? ac.hitsToKill : ac.hitsToKill + 1
+  const baseHits = intensity === 'CAUTIOUS' ? 1 : intensity === 'NORMAL' ? ac.hitsToKill : ac.hitsToKill + 1
+  const hitsToGrant = feastCountered ? Math.max(1, baseHits - 1) : baseHits
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -265,13 +283,15 @@ function applyGrow(
   zone: Zone,
   intensity: Intensity,
   config: GameConfig,
+  toxinCountered: boolean,
   rng: () => number,
 ): void {
   const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { grow }, nutrientScanRadius } = config
   const im = intCfg[intensity.toLowerCase() as 'cautious' | 'normal' | 'aggressive']
   const me = myColor(player)
 
-  const extraRepro = Math.round(grow.extraReproPerCell * im.effectMult)
+  const reduction = toxinCountered ? config.counterEffectReductionPct : 0
+  const extraRepro = Math.max(1, Math.round(grow.extraReproPerCell * im.effectMult * (1 - reduction)))
   const cells: [number, number][] = []
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -308,6 +328,7 @@ function applyHunt(
   intensity: Intensity,
   config: GameConfig,
   armorBypassed: boolean,
+  wallCountered: boolean,
   rng: () => number,
 ): void {
   const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { hunt } } = config
@@ -315,7 +336,8 @@ function applyHunt(
   const me = myColor(player)
   const enemy = enemyColor(player)
 
-  const r = Math.round(hunt.scanRadiusTiles * im.effectMult)
+  const wallReduction = wallCountered ? config.counterEffectReductionPct : 0
+  const r = Math.max(1, Math.round(hunt.scanRadiusTiles * im.effectMult * (1 - wallReduction)))
   const cells: [number, number][] = []
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -323,10 +345,7 @@ function applyHunt(
     }
   }
 
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]]
-  }
+  shuffle(cells, rng)
 
   for (const [x, y] of cells) {
     const target = findNearestEnemy(x, y, state.grid, enemy, r, w, h)
@@ -367,6 +386,164 @@ function applyHunt(
   }
 }
 
+function applyWall(
+  state: GridState,
+  player: 'blue' | 'red',
+  zone: Zone,
+  intensity: Intensity,
+  config: GameConfig,
+  scatterCountered: boolean,
+  rng: () => number,
+): void {
+  const wallCell = player === 'blue' ? CELL.WALL_BLUE : CELL.WALL_RED
+  const me = myColor(player)
+  const enemy = enemyColor(player)
+  const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { wall } } = config
+  const im = intCfg[intensity.toLowerCase() as 'cautious' | 'normal' | 'aggressive']
+
+  const countToPlace = Math.round(
+    wall.cellCount * im.effectMult * (scatterCountered ? 1 - config.counterEffectReductionPct : 1)
+  )
+
+  const [ecx, ecy] = enemyCentroidInZone(zone, state.grid, enemy, w, h)
+
+  const myCells: [number, number][] = []
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (inZone(x, y, zone, w, h) && state.grid[idx(x, y, w)] === me) myCells.push([x, y])
+    }
+  }
+  shuffle(myCells, rng)
+
+  let placed = 0
+  for (const [x, y] of myCells) {
+    if (placed >= countToPlace) break
+    const [nx, ny] = stepToward(x, y, ecx, ecy)
+    if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue
+    const ni = idx(nx, ny, w)
+    if (state.grid[ni] === CELL.EMPTY) {
+      state.grid[ni] = wallCell
+      state.wallAge[ni] = 0
+      placed++
+    }
+  }
+}
+
+function applyScatter(
+  state: GridState,
+  player: 'blue' | 'red',
+  zone: Zone,
+  intensity: Intensity,
+  config: GameConfig,
+  pulseCountered: boolean,
+  rng: () => number,
+): void {
+  const me = myColor(player)
+  const { gridWidth: w, gridHeight: h, intensity: intCfg } = config
+  const im = intCfg[intensity.toLowerCase() as 'cautious' | 'normal' | 'aggressive']
+
+  const cells: [number, number][] = []
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (inZone(x, y, zone, w, h) && state.grid[idx(x, y, w)] === me) cells.push([x, y])
+    }
+  }
+  shuffle(cells, rng)
+
+  const reduction = pulseCountered ? config.counterEffectReductionPct : 0
+  const maxActive = Math.ceil(cells.length * im.effectMult * (1 - reduction))
+
+  for (let c = 0; c < Math.min(cells.length, maxActive); c++) {
+    const [x, y] = cells[c]
+    const ns = neighbors4(x, y, w, h).filter(([nx, ny]) => state.grid[idx(nx, ny, w)] === CELL.EMPTY)
+    if (ns.length === 0) continue
+    const [nx, ny] = ns[Math.floor(rng() * ns.length)]
+    state.grid[idx(nx, ny, w)] = me
+
+    if (intensity === 'AGGRESSIVE' && rng() < im.friendlyFirePct) {
+      state.grid[idx(x, y, w)] = CELL.EMPTY
+    }
+  }
+}
+
+function applyFeast(
+  state: GridState,
+  player: 'blue' | 'red',
+  zone: Zone,
+  intensity: Intensity,
+  config: GameConfig,
+  growCountered: boolean,
+  rng: () => number,
+): void {
+  const me = myColor(player)
+  const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { feast }, nutrientScanRadius } = config
+  const im = intCfg[intensity.toLowerCase() as 'cautious' | 'normal' | 'aggressive']
+
+  const reduction = growCountered ? config.counterEffectReductionPct : 0
+  const reproMult = Math.max(1, Math.round(feast.reproMultiplier * im.effectMult * (1 - reduction)))
+
+  const cells: [number, number][] = []
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (inZone(x, y, zone, w, h) && state.grid[idx(x, y, w)] === me) cells.push([x, y])
+    }
+  }
+  shuffle(cells, rng)
+
+  for (const [x, y] of cells) {
+    const nutrientIdx = findNutrientNearby(x, y, state.nutrients, nutrientScanRadius, w, h)
+    if (nutrientIdx === null) continue
+
+    for (let r = 0; r < reproMult; r++) {
+      const ns = neighbors4(x, y, w, h).filter(([nx, ny]) => state.grid[idx(nx, ny, w)] === CELL.EMPTY)
+      if (ns.length === 0) break
+      const [nx, ny] = ns[Math.floor(rng() * ns.length)]
+      state.grid[idx(nx, ny, w)] = me
+    }
+
+    state.nutrients[nutrientIdx] = Math.max(0, state.nutrients[nutrientIdx] - 1)
+    if (state.nutrients[nutrientIdx] === 0) state.nutrientCooldown[nutrientIdx] = config.nutrientDepletionTtl
+
+    if (intensity === 'AGGRESSIVE' && rng() < im.friendlyFirePct) {
+      state.grid[idx(x, y, w)] = CELL.EMPTY
+    }
+  }
+}
+
+function applyToxin(
+  state: GridState,
+  player: 'blue' | 'red',
+  zone: Zone,
+  intensity: Intensity,
+  config: GameConfig,
+): void {
+  const me = myColor(player)
+  const myWall = player === 'blue' ? CELL.WALL_BLUE : CELL.WALL_RED
+  const { gridWidth: w, gridHeight: h, intensity: intCfg, actions: { toxin } } = config
+  const im = intCfg[intensity.toLowerCase() as 'cautious' | 'normal' | 'aggressive']
+
+  const r = intensityRadius(toxin.radiusTiles, intensity, im.effectMult)
+  const ownerBit = player === 'red' ? 0x80 : 0
+  const decayTicks = toxin.decayTicks & 0x7F
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!inZone(x, y, zone, w, h) || state.grid[idx(x, y, w)] !== me) continue
+      for (const [nx, ny] of cellsInRadius(x, y, r, w, h)) {
+        const ni = idx(nx, ny, w)
+        // Don't mark own cells or own wall tiles
+        if (state.grid[ni] === me || state.grid[ni] === myWall) continue
+        const existing = state.toxin[ni]
+        const existingTicks = existing & 0x7F
+        // Place or refresh toxin; don't downgrade duration
+        if (existing === 0 || existingTicks < decayTicks) {
+          state.toxin[ni] = ownerBit | decayTicks
+        }
+      }
+    }
+  }
+}
+
 // ── base simulation step ──────────────────────────────────────────────────────
 
 function spawnNutrientBurst(
@@ -401,7 +578,15 @@ function spawnNutrientBurst(
   }
 }
 
-function baseSimStep(state: GridState, config: GameConfig, round: number, rng: () => number): void {
+function baseSimStep(
+  state: GridState,
+  config: GameConfig,
+  round: number,
+  rng: () => number,
+  // Kill chance multipliers for cells sitting in toxin zones (reduced when HUNT counters TOXIN)
+  blueToxinKillFactor = 1.0,  // applied to red's toxin killing blue cells
+  redToxinKillFactor  = 1.0,  // applied to blue's toxin killing red cells
+): void {
   const { gridWidth: w, gridHeight: h, nutrientScanRadius, starvationGraceTicks, nutrientDepletionTtl, nutrientCapacity, nutrientRegenByRound } = config
   const { grid, nutrients, nutrientCooldown, starvation } = state
 
@@ -455,6 +640,29 @@ function baseSimStep(state: GridState, config: GameConfig, round: number, rng: (
     if (nutrients[nutritionIdx] === 0) nutrientCooldown[nutritionIdx] = nutrientDepletionTtl
   }
 
+  // Toxin: kill enemy cells on toxic tiles, then decay
+  for (let i = 0; i < w * h; i++) {
+    const tv = state.toxin[i]
+    if (tv === 0) continue
+
+    const isRedOwned = (tv & 0x80) !== 0  // red's toxin → targets blue
+    const ticks = tv & 0x7F
+
+    const targetColor: CellValue = isRedOwned ? CELL.BLUE : CELL.RED
+    const killFactor = isRedOwned ? blueToxinKillFactor : redToxinKillFactor
+
+    if (grid[i] === targetColor) {
+      if (state.armor[i] > 0) {
+        state.armor[i]--
+      } else if (rng() < config.actions.toxin.killChancePct * killFactor) {
+        grid[i] = CELL.EMPTY
+        starvation[i] = 0
+      }
+    }
+
+    state.toxin[i] = ticks <= 1 ? 0 : (tv & 0x80) | ((ticks - 1) & 0x7F)
+  }
+
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = idx(x, y, w)
@@ -488,34 +696,39 @@ function baseSimStep(state: GridState, config: GameConfig, round: number, rng: (
   }
 }
 
-// ── counter-web ───────────────────────────────────────────────────────────────
+// ── counter-web (all 8 pairs, both directions) ────────────────────────────────
 
 function checkCounters(
   blue: ActionSpec | null,
   red: ActionSpec | null,
   config: GameConfig,
 ): CounterEvent[] {
-  const counters: CounterEvent[] = []
-  if (!blue || !red) return counters
+  if (!blue || !red) return []
+  const overlap = blue.zone === red.zone || blue.zone === 'ALL' || red.zone === 'ALL'
+  if (!overlap) return []
 
-  const zonesOverlap = blue.zone === red.zone || blue.zone === 'ALL' || red.zone === 'ALL'
+  const r = config.counterEffectReductionPct
+  const events: CounterEvent[] = []
 
-  if (zonesOverlap) {
-    if (blue.action === 'ARMOR' && red.action === 'PULSE') {
-      counters.push({ winner: 'ARMOR', loser: 'PULSE', zone: red.zone, reduction: config.counterEffectReductionPct })
-    }
-    if (red.action === 'ARMOR' && blue.action === 'PULSE') {
-      counters.push({ winner: 'ARMOR', loser: 'PULSE', zone: blue.zone, reduction: config.counterEffectReductionPct })
-    }
-    if (blue.action === 'HUNT' && red.action === 'ARMOR') {
-      counters.push({ winner: 'HUNT', loser: 'ARMOR', zone: blue.zone, reduction: config.counterEffectReductionPct })
-    }
-    if (red.action === 'HUNT' && blue.action === 'ARMOR') {
-      counters.push({ winner: 'HUNT', loser: 'ARMOR', zone: red.zone, reduction: config.counterEffectReductionPct })
+  const check = (winner: Action, loser: Action, win: ActionSpec, lose: ActionSpec) => {
+    if (win.action === winner && lose.action === loser) {
+      events.push({ winner, loser, zone: lose.zone, reduction: r })
     }
   }
 
-  return counters
+  for (const [a, b] of [[blue, red], [red, blue]] as [ActionSpec, ActionSpec][]) {
+    check('ARMOR',   'PULSE',   a, b)
+    check('HUNT',    'ARMOR',   a, b)
+    check('PULSE',   'SCATTER', a, b)
+    check('HUNT',    'TOXIN',   a, b)
+    check('TOXIN',   'GROW',    a, b)
+    check('WALL',    'HUNT',    a, b)
+    check('SCATTER', 'WALL',    a, b)
+    check('FEAST',   'ARMOR',   a, b)
+    check('GROW',    'FEAST',   a, b)
+  }
+
+  return events
 }
 
 // ── win condition ─────────────────────────────────────────────────────────────
@@ -553,27 +766,55 @@ export function simulateTick(
   rng: () => number,
 ): TickResult {
   const counters = checkCounters(blueAction, redAction, config)
-  const pulseCounteredByArmor = (player: 'blue' | 'red') =>
-    counters.some(c => c.loser === 'PULSE' &&
-      ((player === 'red' && redAction?.action === 'PULSE') ||
-       (player === 'blue' && blueAction?.action === 'PULSE')))
-  const huntBypAssesArmor = (player: 'blue' | 'red') =>
-    counters.some(c => c.winner === 'HUNT' &&
-      ((player === 'blue' && blueAction?.action === 'HUNT') ||
-       (player === 'red'  && redAction?.action === 'HUNT')))
+
+  const has = (winner: Action, loser: Action) => counters.some(c => c.winner === winner && c.loser === loser)
+  const plays = (player: 'blue' | 'red', action: Action) =>
+    (player === 'blue' ? blueAction : redAction)?.action === action
+
+  // Per-action counter flags
+  const pulseCounteredByArmor = (p: 'blue' | 'red') => plays(p, 'PULSE') && has('ARMOR', 'PULSE')
+  const huntBypAssesArmor     = (p: 'blue' | 'red') => plays(p, 'HUNT')  && has('HUNT', 'ARMOR')
+  const scatterCountered       = (p: 'blue' | 'red') => plays(p, 'SCATTER') && has('PULSE', 'SCATTER')
+  const growCountered          = (p: 'blue' | 'red') => plays(p, 'GROW')    && has('TOXIN', 'GROW')
+  const huntCounteredByWall    = (p: 'blue' | 'red') => plays(p, 'HUNT')    && has('WALL', 'HUNT')
+  const wallCountered          = (p: 'blue' | 'red') => plays(p, 'WALL')    && has('SCATTER', 'WALL')
+  const armorCounteredByFeast  = (p: 'blue' | 'red') => plays(p, 'ARMOR')   && has('FEAST', 'ARMOR')
+  const feastCountered         = (p: 'blue' | 'red') => plays(p, 'FEAST')   && has('GROW', 'FEAST')
+
+  // Toxin kill factors: if a player HUNTs while opponent TOXINs, hunters resist toxin this tick
+  const blueToxinKillFactor = plays('blue', 'HUNT') && has('HUNT', 'TOXIN')
+    ? 1 - config.counterEffectReductionPct : 1.0
+  const redToxinKillFactor  = plays('red', 'HUNT')  && has('HUNT', 'TOXIN')
+    ? 1 - config.counterEffectReductionPct : 1.0
+
+  // Resolution order:
+  // 1. ARMOR (shields go up before any attacks)
+  // 2. TOXIN (mark tiles before movement)
+  // 3. PULSE (AoE attack)
+  // 4. GROW / HUNT / WALL / SCATTER / FEAST (movement & growth)
+  // 5. baseSimStep (reproduction, starvation, toxin kill+decay, wall decay, armor decay)
 
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
-    if (spec?.action === 'ARMOR') applyArmor(state, player, spec.zone, spec.intensity, config)
+    if (spec?.action === 'ARMOR') applyArmor(state, player, spec.zone, spec.intensity, config, armorCounteredByFeast(player))
+  }
+  for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
+    if (spec?.action === 'TOXIN') applyToxin(state, player, spec.zone, spec.intensity, config)
   }
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
     if (spec?.action === 'PULSE') applyPulse(state, player, spec.zone, spec.intensity, config, pulseCounteredByArmor(player), rng)
   }
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
     if (!spec) continue
-    if (spec.action === 'GROW')  applyGrow(state, player, spec.zone, spec.intensity, config, rng)
-    if (spec.action === 'HUNT')  applyHunt(state, player, spec.zone, spec.intensity, config, huntBypAssesArmor(player), rng)
+    switch (spec.action) {
+      case 'GROW':    applyGrow(state, player, spec.zone, spec.intensity, config, growCountered(player), rng); break
+      case 'HUNT':    applyHunt(state, player, spec.zone, spec.intensity, config, huntBypAssesArmor(player), huntCounteredByWall(player), rng); break
+      case 'WALL':    applyWall(state, player, spec.zone, spec.intensity, config, wallCountered(player), rng); break
+      case 'SCATTER': applyScatter(state, player, spec.zone, spec.intensity, config, scatterCountered(player), rng); break
+      case 'FEAST':   applyFeast(state, player, spec.zone, spec.intensity, config, feastCountered(player), rng); break
+    }
   }
-  baseSimStep(state, config, round, rng)
+
+  baseSimStep(state, config, round, rng, blueToxinKillFactor, redToxinKillFactor)
 
   const { winner, bluePct, redPct, blueCells, redCells } = checkWin(state.grid, config, round)
   return { state, counters, bluePct, redPct, blueCells, redCells, winner }

@@ -26,8 +26,8 @@ export interface GameConfig {
   }
   actions: {
     grow: { extraReproPerCell: number }
-    armor: { hitsToKill: number; aggressiveReproPenalty: number }
-    toxin: { radiusTiles: number; killChancePct: number }
+    armor: { hitsToKill: number; reproSpeedPenaltyPct: number }
+    toxin: { radiusTiles: number; killChancePct: number; decayTicks: number }
     hunt: { scanRadiusTiles: number }
     scatter: { ignoreNutrients: boolean }
     pulse: { radiusTiles: number; killPct: number }
@@ -61,8 +61,8 @@ export const DEFAULT_CONFIG: GameConfig = {
   },
   actions: {
     grow:    { extraReproPerCell: 2 },
-    armor:   { hitsToKill: 2, aggressiveReproPenalty: 0.5 },
-    toxin:   { radiusTiles: 3, killChancePct: 1.0 },
+    armor:   { hitsToKill: 2, reproSpeedPenaltyPct: 0.5 },
+    toxin:   { radiusTiles: 3, killChancePct: 1.0, decayTicks: 3 },
     hunt:    { scanRadiusTiles: 5 },
     scatter: { ignoreNutrients: true },
     pulse:   { radiusTiles: 3, killPct: 0.35 },
