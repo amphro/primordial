@@ -4,7 +4,7 @@ import type { GridState, ActionSpec } from './sim/simulation'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type Metric = 'round' | 'enemyDistance' | 'nutrientDensity' | 'cellRatio' | 'myCells'
+export type Metric = 'round' | 'enemyDistance' | 'nutrientDensity' | 'cellRatio' | 'myCells' | 'resource'
 
 export interface Condition {
   metric: Metric
@@ -29,6 +29,7 @@ export interface Metrics {
   cellRatio: number       // myCells / total, 0..1
   enemyDistance: number   // min Manhattan distance from any my-cell to any enemy-cell
   nutrientDensity: number // fraction of all nutrients accessible within radius 4 of my cells
+  resource: number        // power resources held by this player going into this round
 }
 
 export interface EvalResult {
@@ -83,7 +84,9 @@ export function computeMetrics(state: GridState, player: 'blue' | 'red', round: 
   for (let i = 0; i < state.nutrients.length; i++) if (state.nutrients[i] > 0) totalNutrients++
   const nutrientDensity = totalNutrients === 0 ? 0 : nutrientNear / totalNutrients
 
-  return { round, myCells, enemyCells, cellRatio, enemyDistance, nutrientDensity }
+  const resource = player === 'blue' ? state.blueResources : state.redResources
+
+  return { round, myCells, enemyCells, cellRatio, enemyDistance, nutrientDensity, resource }
 }
 
 // ── evaluateStrategy ──────────────────────────────────────────────────────────
@@ -98,11 +101,14 @@ function checkCondition(c: Condition, m: Metrics): boolean {
   }
 }
 
-export function evaluateStrategy(strategy: Strategy, metrics: Metrics): EvalResult {
+export function evaluateStrategy(strategy: Strategy, metrics: Metrics, excludeActions?: Set<string>): EvalResult {
   // Collect all matching rules, then cycle by round so co-matching rules take turns
   const matching = strategy.rules
     .map((rule, i) => ({ rule, i }))
-    .filter(({ rule }) => rule.when.every(c => checkCondition(c, metrics)))
+    .filter(({ rule }) =>
+      rule.when.every(c => checkCondition(c, metrics)) &&
+      (!excludeActions || !excludeActions.has(rule.do.action))
+    )
 
   if (matching.length > 0) {
     const { rule, i } = matching[metrics.round % matching.length]
@@ -113,8 +119,10 @@ export function evaluateStrategy(strategy: Strategy, metrics: Metrics): EvalResu
     }
   }
 
-  const { action, zone, intensity } = strategy.fallback
-  return { spec: strategy.fallback, trace: `fallback → ${action}/${zone}/${intensity}` }
+  const fallback = excludeActions?.has(strategy.fallback.action) ? DEFAULT_FALLBACK : strategy.fallback
+  const { action, zone, intensity } = fallback
+  const tag = fallback === DEFAULT_FALLBACK ? 'fallback[gated]' : 'fallback'
+  return { spec: fallback, trace: `${tag} → ${action}/${zone}/${intensity}` }
 }
 
 // ── Validation (for LLM output) ───────────────────────────────────────────────
@@ -122,7 +130,7 @@ export function evaluateStrategy(strategy: Strategy, metrics: Metrics): EvalResu
 const VALID_ACTIONS     = new Set(['GROW', 'HUNT', 'ARMOR', 'PULSE', 'TOXIN', 'SCATTER', 'WALL', 'FEAST'])
 const VALID_ZONES       = new Set(['NORTH', 'SOUTH', 'EAST', 'WEST', 'ALL'])
 const VALID_INTENSITIES = new Set(['CAUTIOUS', 'NORMAL', 'AGGRESSIVE'])
-const VALID_METRICS     = new Set<string>(['round', 'enemyDistance', 'nutrientDensity', 'cellRatio', 'myCells'])
+const VALID_METRICS     = new Set<string>(['round', 'enemyDistance', 'nutrientDensity', 'cellRatio', 'myCells', 'resource'])
 const VALID_OPS         = new Set<string>(['lt', 'lte', 'gt', 'gte'])
 const MAX_RULES = 6
 const MAX_CONDITIONS_PER_RULE = 4
@@ -177,5 +185,6 @@ function parseCondition(raw: Record<string, unknown>, totalRounds: number): Cond
   if (metric === 'cellRatio')        value = Math.max(0, Math.min(1, value))
   if (metric === 'myCells')          value = Math.max(0, value)
   if (metric === 'enemyDistance')    value = Math.max(0, value)
+  if (metric === 'resource')         value = Math.max(0, value)
   return { metric: metric as Metric, op: op as 'lt' | 'lte' | 'gt' | 'gte', value }
 }

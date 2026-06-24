@@ -23,12 +23,21 @@ ARMOR>PULSE, HUNT>ARMOR, PULSE>SCATTER, HUNT>TOXIN, TOXIN>GROW, WALL>HUNT, SCATT
 ZONES: ALL, NORTH, SOUTH, EAST, WEST (board halves)
 INTENSITIES: CAUTIOUS (weaker, safe), NORMAL, AGGRESSIVE (stronger, 30% friendly fire)
 
+RESOURCE ECONOMY:
+Purple diamond nutrients on the board are "power nutrients". Collecting them fills your resource pool.
+3 actions are GATED — they cost resources or the action falls through to your next matching rule:
+- TOXIN costs 3 power resources per use
+- WALL costs 2 power resources per use
+- FEAST costs 2 power resources per use
+If you can't afford the chosen action, the next matching rule fires instead (or fallback if none).
+
 METRICS you can check in conditions:
 - round: current round 0–19
 - myCells: how many cells I have
 - cellRatio: my cells / total (0=losing, 1=dominating)
 - enemyDistance: min Manhattan tiles to nearest enemy
 - nutrientDensity: fraction of nutrients near my cells (0–1)
+- resource: how many power resources I currently hold (integer ≥ 0)
 
 Operators: "lt" (<), "lte" (≤), "gt" (>), "gte" (≥)
 Rules: max 6; all conditions in a rule are AND'd. When multiple rules match the same round, they cycle in order (round % matchCount), so all matching rules get turns.

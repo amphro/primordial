@@ -45,6 +45,9 @@ export default function Game() {
   const [liveArmor, setLiveArmor] = useState<number[]>([])
   const [liveStarvation, setLiveStarvation] = useState<number[]>([])
   const [liveToxin, setLiveToxin] = useState<number[]>([])
+  const [liveNutrientType, setLiveNutrientType] = useState<number[]>([])
+  const [liveBlueResources, setLiveBlueResources] = useState(0)
+  const [liveRedResources, setLiveRedResources] = useState(0)
   const [resolveAnim, setResolveAnim] = useState<AnimEvent | null>(null)
   const [liveCaption, setLiveCaption] = useState<{ blueTrace: string; redTrace: string } | null>(null)
   const [roundHistory, setRoundHistory] = useState<RoundRecord[]>([])
@@ -113,7 +116,8 @@ export default function Game() {
     if (!res) return
     clearAnimTimer()
     const rng = makeRng(res.seed)
-    let state = initGrid(res.config, rng)
+    const powerRng = makeRng(res.seed ^ 0x4E07)
+    let state = initGrid(res.config, rng, powerRng)
     for (let i = 0; i <= target && i < res.rounds.length; i++) {
       const r = res.rounds[i]
       const result = simulateTick(state, r.round, res.config, r.blueSpec, r.redSpec, rng)
@@ -127,6 +131,9 @@ export default function Game() {
     setLiveArmor(Array.from(state.armor))
     setLiveStarvation(Array.from(state.starvation))
     setLiveToxin(Array.from(state.toxin))
+    setLiveNutrientType(Array.from(state.nutrientType))
+    setLiveBlueResources(state.blueResources)
+    setLiveRedResources(state.redResources)
     animRoundRef.current = target
     setAnimRound(target)
     const r = res.rounds[target]
@@ -170,6 +177,9 @@ export default function Game() {
     setLiveArmor(Array.from(state.armor))
     setLiveStarvation(Array.from(state.starvation))
     setLiveToxin(Array.from(state.toxin))
+    setLiveNutrientType(Array.from(state.nutrientType))
+    setLiveBlueResources(state.blueResources)
+    setLiveRedResources(state.redResources)
     animRoundRef.current = res.rounds.length - 1
     setAnimRound(animRoundRef.current)
     setLiveCaption(null)
@@ -197,13 +207,17 @@ export default function Game() {
 
     clearAnimTimer()
     const rng = makeRng(resolution.seed)
-    const startState = initGrid(resolution.config, rng)
+    const powerRng = makeRng(resolution.seed ^ 0x4E07)
+    const startState = initGrid(resolution.config, rng, powerRng)
     animSimRef.current = { state: startState, rng }
     setLiveGrid(Array.from(startState.grid))
     setLiveNutrients(Array.from(startState.nutrients))
     setLiveArmor(Array.from(startState.armor))
     setLiveStarvation(Array.from(startState.starvation))
     setLiveToxin(Array.from(startState.toxin))
+    setLiveNutrientType(Array.from(startState.nutrientType))
+    setLiveBlueResources(startState.blueResources)
+    setLiveRedResources(startState.redResources)
     animRoundRef.current = -1
     setAnimRound(-1)
     roundHistoryRef.current = []
@@ -232,6 +246,9 @@ export default function Game() {
       setLiveArmor(Array.from(result.state.armor))
       setLiveStarvation(Array.from(result.state.starvation))
       setLiveToxin(Array.from(result.state.toxin))
+      setLiveNutrientType(Array.from(result.state.nutrientType))
+      setLiveBlueResources(result.state.blueResources)
+      setLiveRedResources(result.state.redResources)
       animRoundRef.current = nextRound
       setAnimRound(nextRound)
       setLiveCaption({ blueTrace: r.blueTrace, redTrace: r.redTrace })
@@ -271,6 +288,9 @@ export default function Game() {
         setLiveArmor(s.armor)
         setLiveStarvation(s.starvation)
         setLiveToxin(s.toxin ?? [])
+        setLiveNutrientType(s.nutrientType ?? [])
+        setLiveBlueResources(s.blueResources ?? 0)
+        setLiveRedResources(s.redResources ?? 0)
       }
       // Restore strategy review state on reconnect
       if (mc && !resolutionRef.current) {
@@ -410,6 +430,8 @@ export default function Game() {
             current={roundHistory[roundHistory.length - 1] ?? null}
             previous={roundHistory[roundHistory.length - 2] ?? null}
             myColor={myColor ?? null}
+            blueResources={liveBlueResources}
+            redResources={liveRedResources}
           />
           <GameCanvas
             grid={liveGrid}
@@ -417,6 +439,7 @@ export default function Game() {
             armor={liveArmor}
             starvation={liveStarvation}
             toxin={liveToxin}
+            nutrientType={liveNutrientType}
             anim={resolveAnim}
             gridW={gridW}
             gridH={gridH}

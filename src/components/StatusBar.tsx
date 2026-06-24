@@ -4,6 +4,8 @@ interface Props {
   current: RoundRecord | null
   previous: RoundRecord | null
   myColor: 'blue' | 'red' | null
+  blueResources?: number
+  redResources?: number
 }
 
 function deltaColor(d: number): string {
@@ -14,7 +16,7 @@ function deltaStr(d: number): string {
   return d > 0 ? `+${d}` : `${d}`
 }
 
-export default function StatusBar({ current, previous, myColor }: Props) {
+export default function StatusBar({ current, previous, myColor, blueResources = 0, redResources = 0 }: Props) {
   if (!current) return null
 
   const { blueCells: blue, redCells: red, totalNutrients: nuts } = current
@@ -58,6 +60,16 @@ export default function StatusBar({ current, previous, myColor }: Props) {
           <span style={{ color: deltaColor(dNuts), fontSize: 10 }}> {deltaStr(dNuts)}</span>
         )}
         <span style={{ color: '#3a5a7a', fontSize: 10 }}> nuts</span>
+      </span>
+
+      <span style={{ color: '#2a3a4a' }}>│</span>
+
+      <span style={{ color: '#c080ff', minWidth: 80, fontSize: 11 }}>
+        <span style={{ fontSize: 10 }}>◆ </span>
+        <span style={{ color: '#4a9eff' }}>{blueResources}</span>
+        <span style={{ color: '#3a3a5a', margin: '0 3px' }}>╱</span>
+        <span style={{ color: '#ff6b4a' }}>{redResources}</span>
+        <span style={{ color: '#3a5a7a', fontSize: 10 }}> pwr</span>
       </span>
 
       <span style={{ color: '#2a3a4a' }}>│</span>

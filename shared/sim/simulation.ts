@@ -23,6 +23,9 @@ export interface GridState {
   wallAge: Uint8Array          // ticks this wall has existed (0=not a wall)
   // bit 7 = owner (0=blue, 1=red); bits 0–6 = ticks remaining; 0 = no toxin
   toxin: Uint8Array
+  nutrientType: Uint8Array     // 0=normal nutrient, 1=power nutrient
+  blueResources: number        // power resources collected by blue
+  redResources: number         // power resources collected by red
 }
 
 export interface CounterEvent {
@@ -143,7 +146,7 @@ function stepToward(x: number, y: number, tx: number, ty: number): [number, numb
 
 // ── grid initialization ───────────────────────────────────────────────────────
 
-export function initGrid(config: GameConfig, rng: () => number): GridState {
+export function initGrid(config: GameConfig, rng: () => number, powerRng?: () => number): GridState {
   const { gridWidth: w, gridHeight: h, startingCells, startingNutrients, nutrientClusterSize, nutrientCapacity } = config
   const size = w * h
   const grid = new Uint8Array(size)
@@ -153,6 +156,7 @@ export function initGrid(config: GameConfig, rng: () => number): GridState {
   const armor = new Uint8Array(size)
   const wallAge = new Uint8Array(size)
   const toxin = new Uint8Array(size)
+  const nutrientType = new Uint8Array(size)
 
   const blueMaxX = Math.floor(w / 4)
   const redMinX  = w - Math.floor(w / 4) - 1
@@ -188,7 +192,30 @@ export function initGrid(config: GameConfig, rng: () => number): GridState {
     }
   }
 
-  return { grid, nutrients, nutrientCooldown, starvation, armor, wallAge, toxin }
+  // Tag a subset of placed nutrients as power-type using the separate RNG stream
+  if (powerRng) {
+    const nutrientTiles: number[] = []
+    for (let i = 0; i < size; i++) if (nutrients[i] > 0) nutrientTiles.push(i)
+    const numPower = Math.min(config.powerNutrients.count, nutrientTiles.length)
+    for (let j = nutrientTiles.length - 1; j > 0; j--) {
+      const k = Math.floor(powerRng() * (j + 1));
+      [nutrientTiles[j], nutrientTiles[k]] = [nutrientTiles[k], nutrientTiles[j]]
+    }
+    for (let j = 0; j < numPower; j++) nutrientType[nutrientTiles[j]] = 1
+  }
+
+  return { grid, nutrients, nutrientCooldown, starvation, armor, wallAge, toxin, nutrientType, blueResources: 0, redResources: 0 }
+}
+
+// ── shared helpers ────────────────────────────────────────────────────────────
+
+function consumeNutrient(state: GridState, ni: number, color: CellValue, config: GameConfig): void {
+  state.nutrients[ni] = Math.max(0, state.nutrients[ni] - 1)
+  if (state.nutrients[ni] === 0) state.nutrientCooldown[ni] = config.nutrientDepletionTtl
+  if (state.nutrientType[ni] > 0) {
+    if (color === CELL.BLUE) state.blueResources++
+    else if (color === CELL.RED) state.redResources++
+  }
 }
 
 // ── action effects ────────────────────────────────────────────────────────────
@@ -312,8 +339,7 @@ function applyGrow(
       state.grid[idx(nx, ny, w)] = me
     }
 
-    state.nutrients[nutrientIdx] = Math.max(0, state.nutrients[nutrientIdx] - 1)
-    if (state.nutrients[nutrientIdx] === 0) state.nutrientCooldown[nutrientIdx] = config.nutrientDepletionTtl
+    consumeNutrient(state, nutrientIdx, me, config)
 
     if (intensity === 'AGGRESSIVE' && rng() < im.friendlyFirePct) {
       state.grid[idx(x, y, w)] = CELL.EMPTY
@@ -501,8 +527,7 @@ function applyFeast(
       state.grid[idx(nx, ny, w)] = me
     }
 
-    state.nutrients[nutrientIdx] = Math.max(0, state.nutrients[nutrientIdx] - 1)
-    if (state.nutrients[nutrientIdx] === 0) state.nutrientCooldown[nutrientIdx] = config.nutrientDepletionTtl
+    consumeNutrient(state, nutrientIdx, me, config)
 
     if (intensity === 'AGGRESSIVE' && rng() < im.friendlyFirePct) {
       state.grid[idx(x, y, w)] = CELL.EMPTY
@@ -587,7 +612,7 @@ function baseSimStep(
   blueToxinKillFactor = 1.0,  // applied to red's toxin killing blue cells
   redToxinKillFactor  = 1.0,  // applied to blue's toxin killing red cells
 ): void {
-  const { gridWidth: w, gridHeight: h, nutrientScanRadius, starvationGraceTicks, nutrientDepletionTtl, nutrientCapacity, nutrientRegenByRound } = config
+  const { gridWidth: w, gridHeight: h, nutrientScanRadius, starvationGraceTicks, nutrientCapacity, nutrientRegenByRound } = config
   const { grid, nutrients, nutrientCooldown, starvation } = state
 
   const regenRate = nutrientRegenByRound[Math.min(round, nutrientRegenByRound.length - 1)]
@@ -636,8 +661,7 @@ function baseSimStep(
     if (ns.length === 0) continue
     const [nx, ny] = ns[Math.floor(rng() * ns.length)]
     grid[idx(nx, ny, w)] = color
-    nutrients[nutritionIdx] = Math.max(0, nutrients[nutritionIdx] - 1)
-    if (nutrients[nutritionIdx] === 0) nutrientCooldown[nutritionIdx] = nutrientDepletionTtl
+    consumeNutrient(state, nutritionIdx, color, config)
   }
 
   // Toxin: kill enemy cells on toxic tiles, then decay
@@ -694,6 +718,13 @@ function baseSimStep(
       spawnNutrientBurst(state, CELL.RED, config.comebackNutrientBurst, config.nutrientCapacity, w, h, rng)
     }
   }
+}
+
+function deductResourceIfGated(state: GridState, player: 'blue' | 'red', action: Action, config: GameConfig): void {
+  const cost = config.powerNutrients.gatedActionCosts[action]
+  if (!cost) return
+  if (player === 'blue') state.blueResources = Math.max(0, state.blueResources - cost)
+  else state.redResources = Math.max(0, state.redResources - cost)
 }
 
 // ── counter-web (all 8 pairs, both directions) ────────────────────────────────
@@ -798,7 +829,10 @@ export function simulateTick(
     if (spec?.action === 'ARMOR') applyArmor(state, player, spec.zone, spec.intensity, config, armorCounteredByFeast(player))
   }
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
-    if (spec?.action === 'TOXIN') applyToxin(state, player, spec.zone, spec.intensity, config)
+    if (spec?.action === 'TOXIN') {
+      deductResourceIfGated(state, player, 'TOXIN', config)
+      applyToxin(state, player, spec.zone, spec.intensity, config)
+    }
   }
   for (const [player, spec] of ([['blue', blueAction], ['red', redAction]] as const)) {
     if (spec?.action === 'PULSE') applyPulse(state, player, spec.zone, spec.intensity, config, pulseCounteredByArmor(player), rng)
@@ -808,9 +842,15 @@ export function simulateTick(
     switch (spec.action) {
       case 'GROW':    applyGrow(state, player, spec.zone, spec.intensity, config, growCountered(player), rng); break
       case 'HUNT':    applyHunt(state, player, spec.zone, spec.intensity, config, huntBypAssesArmor(player), huntCounteredByWall(player), rng); break
-      case 'WALL':    applyWall(state, player, spec.zone, spec.intensity, config, wallCountered(player), rng); break
+      case 'WALL':
+        deductResourceIfGated(state, player, 'WALL', config)
+        applyWall(state, player, spec.zone, spec.intensity, config, wallCountered(player), rng)
+        break
       case 'SCATTER': applyScatter(state, player, spec.zone, spec.intensity, config, scatterCountered(player), rng); break
-      case 'FEAST':   applyFeast(state, player, spec.zone, spec.intensity, config, feastCountered(player), rng); break
+      case 'FEAST':
+        deductResourceIfGated(state, player, 'FEAST', config)
+        applyFeast(state, player, spec.zone, spec.intensity, config, feastCountered(player), rng)
+        break
     }
   }
 

@@ -51,17 +51,17 @@ rule-sets cycle cleanly. Overlapping short+long rules may start mid-cycle — ac
 
 ---
 
-## Phase 4 — Nutrient types + resource economy
+## Phase 4 — Nutrient types + resource economy ✅
 
-Bump `SIM_VERSION` → `'3'`.
+Bumped `SIM_VERSION` → `'3'`.
 
-- [ ] New `nutrientType: Uint8Array` GridState layer (0 = normal, 1+ = special); thread everywhere
-  - Place special nutrients via a separate RNG stream (`seed ^ different constant`)
-- [ ] Per-side resource pools: collected when a cell consumes a special nutrient
-  - Surface in the HUD (Phase 2) and `RoundRecord`
-- [ ] Gate TOXIN / WALL / FEAST behind spending the matching resource; fall through when unaffordable
-- [ ] DSL: new `Metric`s for held resources (`resourceA`, etc.)
-  - Update `VALID_METRICS`, `computeMetrics`, `parseCondition` clamps, strategist prompt
+- [x] New `nutrientType: Uint8Array` GridState layer (0 = normal, 1 = power); thread everywhere
+  - Special nutrients placed via separate RNG stream (`seed ^ 0x4E07`)
+  - Rendered as purple diamonds on the canvas
+- [x] Per-side resource pools (`blueResources`, `redResources` on GridState): collected when a cell consumes a power nutrient; shown in HUD (◆ pwr) and `RoundRecord`
+- [x] Gate TOXIN (cost 3), WALL (cost 2), FEAST (cost 2) behind spending resources; fall through to next matching rule (or fallback) when unaffordable
+- [x] DSL: new `resource` Metric for held power resources
+  - Updated `VALID_METRICS`, `computeMetrics`, `parseCondition`, evaluateStrategy `excludeActions` param, strategist system prompt
 
 ---
 

@@ -18,6 +18,9 @@ export interface StateMsg {
   armor: number[]
   starvation: number[]
   toxin?: number[]
+  nutrientType?: number[]
+  blueResources?: number
+  redResources?: number
   events?: BoardEvent[]
   blueStrategy?: Strategy | null
   redStrategy?: Strategy | null

@@ -1,5 +1,5 @@
 import type { GameConfig } from '../config'
-import type { Strategy } from '../strategy'
+import type { Strategy, Metrics } from '../strategy'
 import { makeRng } from '../rng'
 import { evaluateStrategy, computeMetrics } from '../strategy'
 import { initGrid, simulateTick } from './simulation'
@@ -8,7 +8,7 @@ import { generateEvents, applyBoardEvent } from './events'
 import type { BoardEvent } from './events'
 export type { BoardEvent }
 
-export const SIM_VERSION = '2'
+export const SIM_VERSION = '3'
 
 export interface RoundRecord {
   round: number
@@ -20,6 +20,8 @@ export interface RoundRecord {
   redCells: number
   totalNutrients: number
   counters: CounterEvent[]
+  blueResources: number
+  redResources: number
 }
 
 export interface GameResolution {
@@ -34,6 +36,18 @@ export interface GameResolution {
   events: BoardEvent[]
 }
 
+function pickAffordableSpec(
+  strategy: Strategy,
+  metrics: Metrics,
+  resources: number,
+  config: GameConfig,
+): ReturnType<typeof evaluateStrategy> {
+  const first = evaluateStrategy(strategy, metrics)
+  const cost = config.powerNutrients.gatedActionCosts[first.spec.action] ?? 0
+  if (!cost || resources >= cost) return first
+  return evaluateStrategy(strategy, metrics, new Set([first.spec.action]))
+}
+
 export function runGame(
   seed: number,
   config: GameConfig,
@@ -41,15 +55,16 @@ export function runGame(
   redStrategy: Strategy,
 ): GameResolution {
   const rng = makeRng(seed)
-  let state = initGrid(config, rng)
+  const powerRng = makeRng(seed ^ 0x4E07)
+  let state = initGrid(config, rng, powerRng)
   const rounds: RoundRecord[] = []
   const events = generateEvents(seed, config)
 
   for (let round = 0; round < config.totalRounds; round++) {
     const bm = computeMetrics(state, 'blue', round, config)
     const rm = computeMetrics(state, 'red',  round, config)
-    const { spec: blueSpec, trace: blueTrace } = evaluateStrategy(blueStrategy, bm)
-    const { spec: redSpec,  trace: redTrace  } = evaluateStrategy(redStrategy,  rm)
+    const { spec: blueSpec, trace: blueTrace } = pickAffordableSpec(blueStrategy, bm, state.blueResources, config)
+    const { spec: redSpec,  trace: redTrace  } = pickAffordableSpec(redStrategy,  rm, state.redResources,  config)
 
     const result = simulateTick(state, round, config, blueSpec, redSpec, rng)
     state = result.state
@@ -62,7 +77,7 @@ export function runGame(
     let totalNutrients = 0
     for (let i = 0; i < state.nutrients.length; i++) if (state.nutrients[i] > 0) totalNutrients++
 
-    rounds.push({ round, blueSpec, redSpec, blueTrace, redTrace, blueCells: result.blueCells, redCells: result.redCells, totalNutrients, counters: result.counters })
+    rounds.push({ round, blueSpec, redSpec, blueTrace, redTrace, blueCells: result.blueCells, redCells: result.redCells, totalNutrients, counters: result.counters, blueResources: state.blueResources, redResources: state.redResources })
 
     if (result.winner) {
       const t = result.blueCells + result.redCells

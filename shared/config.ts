@@ -37,6 +37,10 @@ export interface GameConfig {
   comebackThresholdPct: number
   comebackNutrientBurst: number
   counterEffectReductionPct: number
+  powerNutrients: {
+    count: number                   // how many normal nutrient tiles to tag as power-type
+    gatedActionCosts: Record<string, number>  // action → resource cost (0 or absent = free)
+  }
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -72,4 +76,8 @@ export const DEFAULT_CONFIG: GameConfig = {
   comebackThresholdPct: 25,
   comebackNutrientBurst: 15,
   counterEffectReductionPct: 0.5,
+  powerNutrients: {
+    count: 25,
+    gatedActionCosts: { TOXIN: 3, WALL: 2, FEAST: 2 },
+  },
 }

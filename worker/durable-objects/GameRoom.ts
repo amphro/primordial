@@ -76,6 +76,9 @@ export class GameRoom extends DurableObject<Env> {
       const armor            = await ctx.storage.get<Uint8Array>('armor')
       const wallAge          = await ctx.storage.get<Uint8Array>('wallAge')
       const toxin            = await ctx.storage.get<Uint8Array>('toxin')
+      const nutrientType     = await ctx.storage.get<Uint8Array>('nutrientType')
+      const blueResources    = (await ctx.storage.get<number>('blueResources')) ?? 0
+      const redResources     = (await ctx.storage.get<number>('redResources'))  ?? 0
 
       if (grid && nutrients) {
         const size = this.config.gridWidth * this.config.gridHeight
@@ -87,6 +90,9 @@ export class GameRoom extends DurableObject<Env> {
           armor:            armor            ?? new Uint8Array(size),
           wallAge:          wallAge          ?? new Uint8Array(size),
           toxin:            toxin            ?? new Uint8Array(size),
+          nutrientType:     nutrientType     ?? new Uint8Array(size),
+          blueResources,
+          redResources,
         }
       }
 
@@ -162,7 +168,8 @@ export class GameRoom extends DurableObject<Env> {
     this.seed = ((seedBytes[0] << 24) | (seedBytes[1] << 16) | (seedBytes[2] << 8) | seedBytes[3]) >>> 0
 
     const rng = makeRng(this.seed)
-    this.gridState = initGrid(this.config, rng)
+    const powerRng = makeRng(this.seed ^ 0x4E07)
+    this.gridState = initGrid(this.config, rng, powerRng)
 
     await this.ctx.storage.put('gameCode', this.gameCode)
     await this.ctx.storage.put('phase',    this.phase)
@@ -451,7 +458,10 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
       nutrients:  this.gridState ? Array.from(this.gridState.nutrients)  : [],
       armor:      this.gridState ? Array.from(this.gridState.armor)      : [],
       starvation: this.gridState ? Array.from(this.gridState.starvation) : [],
-      toxin:      this.gridState ? Array.from(this.gridState.toxin)      : [],
+      toxin:         this.gridState ? Array.from(this.gridState.toxin)        : [],
+      nutrientType:  this.gridState ? Array.from(this.gridState.nutrientType) : [],
+      blueResources: this.gridState ? this.gridState.blueResources            : 0,
+      redResources:  this.gridState ? this.gridState.redResources             : 0,
       events:     generateEvents(this.seed, this.config),
     }
   }
@@ -492,6 +502,9 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     await this.ctx.storage.put('armor',             this.gridState.armor)
     await this.ctx.storage.put('wallAge',           this.gridState.wallAge)
     await this.ctx.storage.put('toxin',             this.gridState.toxin)
+    await this.ctx.storage.put('nutrientType',      this.gridState.nutrientType)
+    await this.ctx.storage.put('blueResources',     this.gridState.blueResources)
+    await this.ctx.storage.put('redResources',      this.gridState.redResources)
   }
 
   private broadcast(message: unknown, excludeUserId?: string): void {

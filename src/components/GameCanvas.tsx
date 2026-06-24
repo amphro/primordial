@@ -19,6 +19,7 @@ interface Props {
   armor?: number[]
   starvation?: number[]
   toxin?: number[]
+  nutrientType?: number[]
   anim?: AnimEvent | null
   gridW?: number
   gridH?: number
@@ -115,7 +116,7 @@ function drawEffect(ctx: CanvasRenderingContext2D, effect: AnimEffect, t: number
 
 const BIRTH_DURATION = 650  // ms for new-cell bloom
 
-export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
+export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, nutrientType, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<AnimEvent | null>(null)
@@ -164,15 +165,28 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, 
       ctx.globalAlpha = 1
     }
 
-    // Draw nutrient dots on empty tiles
-    ctx.fillStyle = 'rgba(255, 220, 80, 0.55)'
+    // Draw nutrient dots on empty tiles (power nutrients shown as diamonds)
     for (let i = 0; i < nutrients.length; i++) {
       if (nutrients[i] === 0 || grid[i] !== 0) continue
       const x = (i % gridW) * cw + cw / 2
       const y = Math.floor(i / gridW) * ch + ch / 2
-      ctx.beginPath()
-      ctx.arc(x, y, Math.max(1, cw * 0.22), 0, Math.PI * 2)
-      ctx.fill()
+      const isPower = nutrientType?.[i] === 1
+      if (isPower) {
+        const r = Math.max(1.5, cw * 0.28)
+        ctx.fillStyle = 'rgba(200, 120, 255, 0.75)'
+        ctx.beginPath()
+        ctx.moveTo(x, y - r)
+        ctx.lineTo(x + r, y)
+        ctx.lineTo(x, y + r)
+        ctx.lineTo(x - r, y)
+        ctx.closePath()
+        ctx.fill()
+      } else {
+        ctx.fillStyle = 'rgba(255, 220, 80, 0.55)'
+        ctx.beginPath()
+        ctx.arc(x, y, Math.max(1, cw * 0.22), 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
 
     // Draw toxin overlay (green tint; brightness proportional to remaining ticks)
@@ -188,7 +202,7 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, 
         ctx.fillRect(x, y, cw, ch)
       }
     }
-  }, [grid, nutrients, armor, starvation, toxin, gridW, gridH, size])
+  }, [grid, nutrients, armor, starvation, toxin, nutrientType, gridW, gridH, size])
 
   // Animation overlay — zone effects + per-cell birth blooms
   useEffect(() => {
