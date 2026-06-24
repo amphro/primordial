@@ -15,6 +15,7 @@ export interface RoundRecord {
   redTrace: string
   blueCells: number
   redCells: number
+  totalNutrients: number
   counters: CounterEvent[]
 }
 
@@ -48,7 +49,10 @@ export function runGame(
     const result = simulateTick(state, round, config, blueSpec, redSpec, rng)
     state = result.state
 
-    rounds.push({ round, blueSpec, redSpec, blueTrace, redTrace, blueCells: result.blueCells, redCells: result.redCells, counters: result.counters })
+    let totalNutrients = 0
+    for (let i = 0; i < state.nutrients.length; i++) if (state.nutrients[i] > 0) totalNutrients++
+
+    rounds.push({ round, blueSpec, redSpec, blueTrace, redTrace, blueCells: result.blueCells, redCells: result.redCells, totalNutrients, counters: result.counters })
 
     if (result.winner) {
       const t = result.blueCells + result.redCells

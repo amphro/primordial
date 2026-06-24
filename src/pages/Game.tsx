@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useGameSocket, type GameMsg, type StateMsg, type StrategyLockedMsg } from '../hooks/useGameSocket'
 import { useSound } from '../hooks/useSound'
 import GameCanvas, { type AnimEffect, type AnimEvent } from '../components/GameCanvas'
+import StatusBar from '../components/StatusBar'
 import ScoreBar from '../components/ScoreBar'
 import StrategyInput from '../components/PromptInput'
 import StrategyReview from '../components/StrategyReview'
@@ -395,6 +396,11 @@ export default function Game() {
       {/* Canvas + sidebar */}
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <StatusBar
+            current={roundHistory[roundHistory.length - 1] ?? null}
+            previous={roundHistory[roundHistory.length - 2] ?? null}
+            myColor={myColor ?? null}
+          />
           <GameCanvas
             grid={liveGrid}
             nutrients={liveNutrients}

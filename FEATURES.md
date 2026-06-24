@@ -31,12 +31,12 @@ rule-sets cycle cleanly. Overlapping short+long rules may start mid-cycle — ac
 
 ---
 
-## Phase 2 — Status / HUD bar
+## Phase 2 — Status / HUD bar ✅
 
-- [ ] Extend `RoundRecord` with per-side cell counts + nutrient counts
-- [ ] New `src/components/StatusBar.tsx` above the canvas
-  - Shows: total cells per side, nutrients (by type), Δ-since-last-round
-  - Updates during the replay animation driven by `RoundRecord`
+- [x] Extend `RoundRecord` with `totalNutrients` count
+- [x] New `src/components/StatusBar.tsx` above the canvas
+  - Shows: blue cells (%), nutrients, red cells (%) with green/red deltas
+  - Updates during replay animation driven by `roundHistory`
 
 ---
 
