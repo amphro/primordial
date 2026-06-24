@@ -1,0 +1,49 @@
+:root {
+  --clr-bg: #080c14;
+  --clr-surface: #0a1420;
+  --clr-surface-deep: #06090f;
+  --clr-border: #1a2a3a;
+  --clr-border-hi: #1e3050;
+
+  --clr-text: #e0e8f0;
+  --clr-text-secondary: #9ab8d0;
+  --clr-text-muted: #6a8aaa;
+  --clr-text-dim: #4a6a8a;
+
+  --clr-blue: #4a9eff;
+  --clr-red: #ff6b4a;
+  --clr-blue-dim: #5a8aba;
+  --clr-red-dim: #8a5a5a;
+  --clr-green: #00cc66;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+}
+
+/* Utility classes */
+.section-label {
+  font-size: var(--fs-xs);
+  letter-spacing: 2px;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+}
+
+.text-muted { color: var(--clr-text-muted); }
+.text-dim   { color: var(--clr-text-dim); }
+.text-sec   { color: var(--clr-text-secondary); }
+
+.panel {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.panel-deep {
+  background: var(--clr-surface-deep);
+  border: 1px solid var(--clr-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}

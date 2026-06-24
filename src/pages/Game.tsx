@@ -386,11 +386,11 @@ export default function Game() {
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Logo size={18} />
-          <span style={{ color: '#3a5a7a', fontSize: 11, letterSpacing: 2 }}>PRIMORDIAL</span>
+          <span className="section-label">PRIMORDIAL</span>
         </span>
         <span style={{ fontSize: 11 }}>
-          <span style={{ color: '#3a5a7a' }}>{code} · </span>
-          <span style={{ color: connected ? '#00cc66' : '#3a5a7a' }}>{connected ? '● live' : '○ connecting'}</span>
+          <span className="text-muted">{code} · </span>
+          <span style={{ color: connected ? 'var(--clr-green)' : 'var(--clr-text-muted)' }}>{connected ? '● live' : '○ connecting'}</span>
         </span>
         {/* Speed controls — visible during animation */}
         {resolution && (
@@ -402,9 +402,9 @@ export default function Game() {
                 style={{
                   background: speed === s ? '#1a3050' : 'transparent',
                   border: `1px solid ${speed === s ? '#4a9eff' : '#1e3050'}`,
-                  color: speed === s ? '#4a9eff' : '#3a5a7a',
+                  color: speed === s ? '#4a9eff' : 'var(--clr-text-muted)',
                   fontFamily: 'monospace',
-                  fontSize: 10,
+                  fontSize: 11,
                   padding: '2px 7px',
                   borderRadius: 3,
                   cursor: 'pointer',
@@ -416,7 +416,7 @@ export default function Game() {
             {isAnimating && (
               <button
                 onClick={skipToEnd}
-                style={{ background: 'transparent', border: '1px solid #1e3050', color: '#3a5a7a', fontFamily: 'inherit', fontSize: 10, padding: '2px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
+                style={{ background: 'transparent', border: '1px solid #1e3050', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '2px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
               >
                 skip »
               </button>
@@ -428,8 +428,8 @@ export default function Game() {
       {/* Score bar */}
       <div style={{ width: '100%', maxWidth: 660 }}>
         <ScoreBar blue={blueScore} red={redScore} round={displayRound} totalRounds={totalRounds} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: '#2a3a4a' }}>
-          <span style={{ color: '#4a6a8a', letterSpacing: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 12, color: 'var(--clr-text-muted)' }}>
+          <span style={{ color: 'var(--clr-text-secondary)', letterSpacing: 1 }}>
             {resolution ? (displayRound > 0 ? 'BATTLE' : 'READY') : 'STRATEGY PHASE'}
           </span>
           <span>Round {displayRound}/{totalRounds}</span>
@@ -465,7 +465,7 @@ export default function Game() {
 
         {roundHistory.length > 0 && myColor && (
           <div style={{ flex: '0 0 156px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ color: '#5a8aaa', fontSize: 10, letterSpacing: 2, marginBottom: 4 }}>ROUNDS</div>
+            <div className="section-label" style={{ marginBottom: 4 }}>ROUNDS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 452, overflowY: 'auto', paddingRight: 2 }}>
             {[...roundHistory].reverse().map(entry => {
               const mySpec  = myColor  === 'blue' ? entry.blueSpec : entry.redSpec
@@ -478,21 +478,21 @@ export default function Game() {
               const oppNow  = oppColor === 'blue' ? entry.blueCells : entry.redCells
               return (
                 <div key={entry.round} style={{ background: '#0a1420', border: '1px solid #1a2a3a', borderRadius: 3, padding: '5px 8px' }}>
-                  <div style={{ color: '#7a9aba', fontSize: 10, marginBottom: 3 }}>Round {entry.round + 1}</div>
+                  <div className="text-sec" style={{ fontSize: 12, marginBottom: 3 }}>Round {entry.round + 1}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Tooltip text={`${ACTION_DESC[mySpec.action] ?? mySpec.action}\n\nRule: ${myColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: myAccent, fontSize: 10, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent + '60' }}>{mySpec.action}</span>
+                      <span style={{ color: myAccent, fontSize: 12, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent + '60' }}>{mySpec.action}</span>
                     </Tooltip>
-                    <span style={{ color: (myNow - myPrev) >= 0 ? '#33bb66' : '#dd5555', fontSize: 10, fontWeight: 'bold', marginLeft: 'auto' }}>
+                    <span style={{ color: (myNow - myPrev) >= 0 ? '#33bb66' : '#dd5555', fontSize: 12, fontWeight: 'bold', marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(myPrev, myNow) : `${myNow}`}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <span style={{ color: '#3a5a7a', fontSize: 9 }}>vs </span>
+                    <span className="text-muted" style={{ fontSize: 11 }}>vs </span>
                     <Tooltip text={`${ACTION_DESC[oppSpec.action] ?? oppSpec.action}\n\nRule: ${oppColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: oppAccent, fontSize: 9, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent + '60' }}>{oppSpec.action}</span>
+                      <span style={{ color: oppAccent, fontSize: 11, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent + '60' }}>{oppSpec.action}</span>
                     </Tooltip>
-                    <span style={{ color: (oppNow - oppPrev) >= 0 ? '#cc5555' : '#55aa55', fontSize: 9, marginLeft: 'auto' }}>
+                    <span style={{ color: (oppNow - oppPrev) >= 0 ? '#cc5555' : '#55aa55', fontSize: 11, marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(oppPrev, oppNow) : `${oppNow}`}
                     </span>
                   </div>
@@ -509,12 +509,12 @@ export default function Game() {
         <div style={{ width: '100%', maxWidth: 660, background: '#0a1420', border: '1px solid #1a2a3a', borderRadius: 4, padding: '8px 14px' }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1, color: accentBlue, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span style={{ color: '#2a4a6a', fontSize: 9, marginRight: 6 }}>BLUE</span>
+              <span className="text-dim" style={{ fontSize: 11, marginRight: 6 }}>BLUE</span>
               {liveCaption.blueTrace}
             </div>
             <div style={{ flex: 1, color: accentRed, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
               {liveCaption.redTrace}
-              <span style={{ color: '#6a2a2a', fontSize: 9, marginLeft: 6 }}>RED</span>
+              <span className="text-dim" style={{ fontSize: 11, marginLeft: 6 }}>RED</span>
             </div>
           </div>
         </div>
@@ -527,7 +527,7 @@ export default function Game() {
             <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === myColor ? '#00cc66' : '#ff6b4a', letterSpacing: 2 }}>
               {gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
             </div>
-            <div style={{ fontSize: 11, color: '#3a5a7a', marginTop: 3 }}>
+            <div className="text-muted" style={{ fontSize: 12, marginTop: 3 }}>
               Blue {gameOverData.scores.blue}% · Red {gameOverData.scores.red}%
             </div>
           </div>
@@ -543,16 +543,16 @@ export default function Game() {
       {/* Board events panel — shown during strategy phase */}
       {!resolution && gameState?.events && gameState.events.length > 0 && (
         <div style={{ width: '100%', maxWidth: 660, background: '#06090f', border: '1px solid #1a2a3a', borderRadius: 4, padding: '8px 12px' }}>
-          <div style={{ color: '#5a7a6a', fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>BOARD EVENTS</div>
+          <div className="section-label" style={{ marginBottom: 6 }}>BOARD EVENTS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {gameState.events.map((ev, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, fontFamily: 'monospace' }}>
-                <span style={{ color: '#3a5a4a', minWidth: 26 }}>R{ev.round + 1}</span>
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, fontFamily: 'monospace' }}>
+                <span className="text-muted" style={{ minWidth: 26 }}>R{ev.round + 1}</span>
                 <span style={{ color: ev.kind === 'nutrient_bloom' ? '#a0c840' : '#c88040' }}>
                   {ev.kind === 'nutrient_bloom' ? '⬡ Nutrient Bloom' : '☀ Drought'}
                 </span>
-                <span style={{ color: '#2a3a4a' }}>{ev.zone !== 'ALL' ? ev.zone.toLowerCase() : 'all zones'}</span>
-                {ev.period && <span style={{ color: '#2a3a4a', fontSize: 9 }}>↻ every {ev.period}</span>}
+                <span className="text-dim">{ev.zone !== 'ALL' ? ev.zone.toLowerCase() : 'all zones'}</span>
+                {ev.period && <span className="text-dim" style={{ fontSize: 11 }}>↻ every {ev.period}</span>}
               </div>
             ))}
           </div>
@@ -614,20 +614,20 @@ export default function Game() {
         {devOpen && (
           <div style={{ background: '#06090f', border: '1px solid #1a2a3a', borderRadius: 4, padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ color: '#2a4a6a' }}>code:</span>
+              <span style={{ color: 'var(--clr-text-dim)' }}>code:</span>
               <button onClick={() => void navigator.clipboard.writeText(code ?? '')} style={{ color: '#4a9eff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'monospace', fontSize: 11, padding: 0 }}>
                 {code} ⎘
               </button>
-              <span style={{ color: '#2a4a6a' }}>seed: <span style={{ color: '#6a8aaa' }}>{gameState?.seed ?? 0}</span></span>
+              <span style={{ color: 'var(--clr-text-dim)' }}>seed: <span style={{ color: 'var(--clr-text-muted)' }}>{gameState?.seed ?? 0}</span></span>
               <span style={{ color: '#2a6a4a' }}>blue: <span style={{ color: '#4a9eff' }}>{blueCount}</span></span>
               <span style={{ color: '#6a2a2a' }}>red: <span style={{ color: '#ff6b4a' }}>{redCount}</span></span>
             </div>
             {resolution && (
               <div style={{ borderTop: '1px solid #1a2a3a', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ color: '#2a4a6a' }}>v{resolution.simVersion} · {resolution.rounds.length} rounds · {SPEED_LABEL[speed]}</div>
+                <div style={{ color: 'var(--clr-text-dim)' }}>v{resolution.simVersion} · {resolution.rounds.length} rounds · {SPEED_LABEL[speed]}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ color: '#3a6a9a' }}>blue: {resolution.blueStrategy.rules.length} rules</div>
-                  <div style={{ color: '#6a3a3a' }}>red: {resolution.redStrategy.rules.length} rules</div>
+                  <div style={{ color: 'var(--clr-blue-dim)' }}>blue: {resolution.blueStrategy.rules.length} rules</div>
+                  <div style={{ color: 'var(--clr-red-dim)' }}>red: {resolution.redStrategy.rules.length} rules</div>
                 </div>
                 {/* Round scrubber — only when game is finished (all rounds known) */}
                 {gameFinished && (
@@ -645,21 +645,21 @@ export default function Game() {
                       disabled={animRound >= resolution.rounds.length - 1}
                       style={{ background: 'none', border: '1px solid #1e3050', color: animRound < resolution.rounds.length - 1 ? '#4a9eff' : '#1a2a3a', fontFamily: 'monospace', fontSize: 13, padding: '1px 8px', borderRadius: 3, cursor: animRound < resolution.rounds.length - 1 ? 'pointer' : 'default' }}
                     >▶</button>
-                    <span style={{ color: '#2a4a6a', fontSize: 9, marginLeft: 4 }}>scrub rounds</span>
+                    <span style={{ color: 'var(--clr-text-dim)', fontSize: 10, marginLeft: 4 }}>scrub rounds</span>
                   </div>
                 )}
                 {liveCaption && (
                   <>
-                    <div style={{ color: '#3a6a9a', fontSize: 10 }}>↳ {liveCaption.blueTrace}</div>
-                    <div style={{ color: '#6a3a3a', fontSize: 10 }}>↳ {liveCaption.redTrace}</div>
+                    <div style={{ color: 'var(--clr-blue-dim)', fontSize: 10 }}>↳ {liveCaption.blueTrace}</div>
+                    <div style={{ color: 'var(--clr-red-dim)', fontSize: 10 }}>↳ {liveCaption.redTrace}</div>
                   </>
                 )}
               </div>
             )}
             {gameState?.strategyReadback?.blue && (
               <div style={{ borderTop: '1px solid #1a2a3a', paddingTop: 6 }}>
-                <div style={{ color: '#3a6a9a', fontSize: 10 }}>blue: {gameState.strategyReadback.blue}</div>
-                <div style={{ color: '#6a3a3a', fontSize: 10 }}>red: {gameState.strategyReadback.red}</div>
+                <div style={{ color: 'var(--clr-blue-dim)', fontSize: 10 }}>blue: {gameState.strategyReadback.blue}</div>
+                <div style={{ color: 'var(--clr-red-dim)', fontSize: 10 }}>red: {gameState.strategyReadback.red}</div>
               </div>
             )}
             {/* Strategy JSON — collapsible per side */}
@@ -670,14 +670,14 @@ export default function Game() {
                   const json  = JSON.stringify(strat, null, 2)
                   return (
                     <details key={side}>
-                      <summary style={{ color: side === 'blue' ? '#3a6a9a' : '#6a3a3a', fontSize: 10, cursor: 'pointer', userSelect: 'none', listStyle: 'none' }}>
+                      <summary style={{ color: side === 'blue' ? 'var(--clr-blue-dim)' : 'var(--clr-red-dim)', fontSize: 10, cursor: 'pointer', userSelect: 'none', listStyle: 'none' }}>
                         ▶ {side} strategy ({strat.rules.length} rules)
                         <button onClick={e => { e.preventDefault(); void navigator.clipboard.writeText(json) }}
-                          style={{ marginLeft: 8, background: 'none', border: 'none', color: '#2a4a6a', fontSize: 9, cursor: 'pointer', fontFamily: 'monospace' }}>
+                          style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--clr-text-dim)', fontSize: 10, cursor: 'pointer', fontFamily: 'monospace' }}>
                           copy ⎘
                         </button>
                       </summary>
-                      <pre style={{ margin: '6px 0 0 8px', color: side === 'blue' ? '#2a5a8a' : '#6a2a2a', fontSize: 10, lineHeight: 1.5, overflowX: 'auto', background: '#040810', padding: 8, borderRadius: 3 }}>
+                      <pre style={{ margin: '6px 0 0 8px', color: side === 'blue' ? 'var(--clr-blue-dim)' : 'var(--clr-red-dim)', fontSize: 10, lineHeight: 1.5, overflowX: 'auto', background: '#040810', padding: 8, borderRadius: 3 }}>
                         {json}
                       </pre>
                     </details>

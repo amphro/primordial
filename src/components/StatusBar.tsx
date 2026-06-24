@@ -46,41 +46,41 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
         <span style={{ color: '#4a9eff', fontWeight: myColor === 'blue' ? 700 : 400 }}>▪ </span>
         {blue}
         {dBlue !== null && dBlue !== 0 && (
-          <span style={{ color: deltaColor(dBlue), fontSize: 10 }}> {deltaStr(dBlue)}</span>
+          <span style={{ color: deltaColor(dBlue), fontSize: 11 }}> {deltaStr(dBlue)}</span>
         )}
-        <span style={{ color: '#3a5a7a', fontSize: 10 }}> ({bluePct}%)</span>
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> ({bluePct}%)</span>
       </span>
 
-      <span style={{ color: '#2a3a4a' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
       <span style={{ color: '#c8a840', minWidth: 70 }}>
-        <span style={{ fontSize: 10 }}>⬡ </span>
+        <span style={{ fontSize: 11 }}>⬡ </span>
         {nuts}
         {dNuts !== null && dNuts !== 0 && (
-          <span style={{ color: deltaColor(dNuts), fontSize: 10 }}> {deltaStr(dNuts)}</span>
+          <span style={{ color: deltaColor(dNuts), fontSize: 11 }}> {deltaStr(dNuts)}</span>
         )}
-        <span style={{ color: '#3a5a7a', fontSize: 10 }}> nuts</span>
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> nuts</span>
       </span>
 
-      <span style={{ color: '#2a3a4a' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: '#c080ff', minWidth: 80, fontSize: 11 }}>
-        <span style={{ fontSize: 10 }}>◆ </span>
+      <span style={{ color: '#c080ff', minWidth: 80, fontSize: 12 }}>
+        <span>◆ </span>
         <span style={{ color: '#4a9eff' }}>{blueResources}</span>
-        <span style={{ color: '#3a3a5a', margin: '0 3px' }}>╱</span>
+        <span style={{ color: 'var(--clr-text-dim)', margin: '0 3px' }}>╱</span>
         <span style={{ color: '#ff6b4a' }}>{redResources}</span>
-        <span style={{ color: '#3a5a7a', fontSize: 10 }}> pwr</span>
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> pwr</span>
       </span>
 
-      <span style={{ color: '#2a3a4a' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
       <span style={{ color: myColor === 'red' ? '#ffaa88' : '#cc6844', minWidth: 90 }}>
         <span style={{ color: '#ff6b4a', fontWeight: myColor === 'red' ? 700 : 400 }}>▪ </span>
         {red}
         {dRed !== null && dRed !== 0 && (
-          <span style={{ color: deltaColor(dRed), fontSize: 10 }}> {deltaStr(dRed)}</span>
+          <span style={{ color: deltaColor(dRed), fontSize: 11 }}> {deltaStr(dRed)}</span>
         )}
-        <span style={{ color: '#3a5a7a', fontSize: 10 }}> ({redPct}%)</span>
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> ({redPct}%)</span>
       </span>
     </div>
   )
