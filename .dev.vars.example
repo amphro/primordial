@@ -1,0 +1,13 @@
+# Copy this file to .dev.vars and fill in your values.
+# .dev.vars is gitignored and used by wrangler for local development.
+
+# Google OAuth — create credentials at https://console.cloud.google.com
+# Guest/quick-join works without these. Only needed for Google sign-in.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Random string used to sign session tokens. Generate with: openssl rand -hex 32
+SESSION_SECRET=
+
+# Base URL for OAuth redirect URIs. Use http://localhost:8787 for local dev.
+ORIGIN=http://localhost:8787

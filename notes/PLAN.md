@@ -1,3 +1,5 @@
+> **Historical snapshot.** This is the original implementation plan. The current architecture may differ.
+
 # Implementation Plan: PRIMORDIAL
 
 ## Tech Stack

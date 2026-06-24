@@ -1,3 +1,5 @@
+> **Historical snapshot.** Feature roadmap from an earlier phase; may not reflect current status.
+
 # Feature Roadmap
 
 Living tracker for the game-depth initiative. Each phase ships as its own commit.

@@ -17,6 +17,7 @@ import { applyBoardEvent } from '@shared/sim/events'
 import type { Strategy } from '@shared/strategy'
 import Logo from '../components/Logo'
 import Tooltip from '../components/Tooltip'
+import { HOW_TO_PLAY_URL } from '../lib/links'
 
 const ACTION_DESC: Record<string, string> = {
   GROW:    'GROW — Extra reproduction near nutrients.\nBoosts cell count using nearby nutrient charges.',
@@ -389,6 +390,7 @@ export default function Game() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Logo size={18} />
           <span className="section-label">PRIMORDIAL</span>
+          <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-muted)', fontSize: 10, textDecoration: 'none', marginLeft: 4 }}>guide</a>
         </span>
         <span style={{ fontSize: 11 }}>
           <span className="text-muted">{code} · </span>

@@ -1,3 +1,5 @@
+> **Historical snapshot.** Earlier concept exploration; current design may differ.
+
 # Game Concepts
 
 ## Core Mechanic (all concepts share this)

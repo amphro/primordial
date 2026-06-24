@@ -1,8 +1,8 @@
 {
-  "name": "wraingled",
+  "name": "primordial",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A cellular automaton game where natural language strategies are your only weapon",
+  "author": "Thomas Dvornik",
   "scripts": {
     "dev:worker": "wrangler dev --port 8787",
     "dev:ui": "vite",
@@ -13,9 +13,8 @@
     "deploy": "npm run build && wrangler deploy",
     "export:games": "node scripts/export-games.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["game", "cloudflare", "workers", "ai"],
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.0.0",

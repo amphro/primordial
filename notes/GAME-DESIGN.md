@@ -1,3 +1,5 @@
+> **Historical snapshot.** This document describes an earlier design (per-round prompt submission, a different action set). The current game uses one-shot resolution and 8 actions. See `docs/how-to-play.md` and `.claude/skills/primordial-sim` for current mechanics.
+
 # PRIMORDIAL — Game Design Document
 
 ## Concept

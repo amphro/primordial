@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import Logo from '../components/Logo'
+import { HOW_TO_PLAY_URL } from '../lib/links'
 
 export default function Lobby() {
   const { user } = useAuth()
@@ -37,7 +38,7 @@ export default function Lobby() {
           <Logo size={30} />PRIMORDIAL
         </h1>
         <p style={{ color: '#5a7a9a', fontSize: 12, marginBottom: 40 }}>
-          Hello, {user?.displayName}
+          A cellular battle of wills.
         </p>
 
         <button
@@ -52,9 +53,12 @@ export default function Lobby() {
           <p style={{ color: '#ff6b6b', fontSize: 12, marginTop: 16 }}>{error}</p>
         )}
 
-        <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #1a2a3a' }}>
-          <a href="/auth/logout" style={{ color: '#3a5a7a', fontSize: 11, textDecoration: 'none' }}>
-            Sign out
+        <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid #1a2a3a', textAlign: 'center' }}>
+          <p style={{ color: '#2a3a4a', fontSize: 11, marginBottom: 8 }}>
+            Experimental hobby project — use at your own risk.
+          </p>
+          <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#3a5a7a', fontSize: 11, textDecoration: 'none' }}>
+            How to play →
           </a>
         </div>
       </div>

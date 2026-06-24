@@ -1,3 +1,5 @@
+> **Historical snapshot.** This document describes an earlier design phase. Mechanics and architecture described here may differ from the current codebase.
+
 # Research: AI-Prompt-Driven Multiplayer Game
 
 ## What We're Building
