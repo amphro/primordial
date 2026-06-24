@@ -18,7 +18,7 @@ export interface Rule {
 }
 
 export interface Strategy {
-  rules: Rule[]      // first matching rule fires
+  rules: Rule[]      // all matching rules cycle by round (round % matchCount)
   fallback: ActionSpec
 }
 
@@ -99,16 +99,20 @@ function checkCondition(c: Condition, m: Metrics): boolean {
 }
 
 export function evaluateStrategy(strategy: Strategy, metrics: Metrics): EvalResult {
-  for (let i = 0; i < strategy.rules.length; i++) {
-    const rule = strategy.rules[i]
-    if (rule.when.every(c => checkCondition(c, metrics))) {
-      const conds = rule.when.map(c => `${c.metric}${c.op}${c.value}`).join(' ')
-      return {
-        spec: rule.do,
-        trace: `rule:${i + 1} ${conds} → ${rule.do.action}/${rule.do.zone}/${rule.do.intensity}`,
-      }
+  // Collect all matching rules, then cycle by round so co-matching rules take turns
+  const matching = strategy.rules
+    .map((rule, i) => ({ rule, i }))
+    .filter(({ rule }) => rule.when.every(c => checkCondition(c, metrics)))
+
+  if (matching.length > 0) {
+    const { rule, i } = matching[metrics.round % matching.length]
+    const conds = rule.when.map(c => `${c.metric}${c.op}${c.value}`).join(' ')
+    return {
+      spec: rule.do,
+      trace: `rule:${i + 1}[${metrics.round % matching.length + 1}/${matching.length}] ${conds} → ${rule.do.action}/${rule.do.zone}/${rule.do.intensity}`,
     }
   }
+
   const { action, zone, intensity } = strategy.fallback
   return { spec: strategy.fallback, trace: `fallback → ${action}/${zone}/${intensity}` }
 }

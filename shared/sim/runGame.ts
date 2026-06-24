@@ -5,7 +5,7 @@ import { evaluateStrategy, computeMetrics } from '../strategy'
 import { initGrid, simulateTick } from './simulation'
 import type { ActionSpec, CounterEvent } from './simulation'
 
-export const SIM_VERSION = '1'
+export const SIM_VERSION = '2'
 
 export interface RoundRecord {
   round: number
