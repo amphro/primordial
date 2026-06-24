@@ -6,15 +6,27 @@
   --clr-border-hi: #1e3050;
 
   --clr-text: #e0e8f0;
-  --clr-text-secondary: #9ab8d0;
-  --clr-text-muted: #6a8aaa;
-  --clr-text-dim: #4a6a8a;
+  --clr-text-secondary: #aac4dc;
+  --clr-text-muted: #7a9aba;
+  --clr-text-dim: #5a7a9a;
 
   --clr-blue: #4a9eff;
   --clr-red: #ff6b4a;
-  --clr-blue-dim: #5a8aba;
-  --clr-red-dim: #8a5a5a;
+  --clr-blue-dim: #6a9aca;
+  --clr-red-dim: #9a6a6a;
   --clr-green: #00cc66;
+
+  /* Semantic state colors */
+  --clr-pos: #4ad080;       /* positive delta / gain */
+  --clr-neg: #e06050;       /* negative delta / loss */
+
+  /* Game element colors */
+  --clr-nutrient: #c8a840;
+  --clr-power: #c080ff;
+
+  /* Input */
+  --clr-card: #0d1520;
+  --clr-input-bg: #0a1018;
 
   --fs-xs: 11px;
   --fs-sm: 12px;

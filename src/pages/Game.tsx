@@ -483,7 +483,7 @@ export default function Game() {
                     <Tooltip text={`${ACTION_DESC[mySpec.action] ?? mySpec.action}\n\nRule: ${myColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
                       <span style={{ color: myAccent, fontSize: 12, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent + '60' }}>{mySpec.action}</span>
                     </Tooltip>
-                    <span style={{ color: (myNow - myPrev) >= 0 ? '#33bb66' : '#dd5555', fontSize: 12, fontWeight: 'bold', marginLeft: 'auto' }}>
+                    <span style={{ color: (myNow - myPrev) >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 12, fontWeight: 'bold', marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(myPrev, myNow) : `${myNow}`}
                     </span>
                   </div>
@@ -492,7 +492,7 @@ export default function Game() {
                     <Tooltip text={`${ACTION_DESC[oppSpec.action] ?? oppSpec.action}\n\nRule: ${oppColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
                       <span style={{ color: oppAccent, fontSize: 11, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent + '60' }}>{oppSpec.action}</span>
                     </Tooltip>
-                    <span style={{ color: (oppNow - oppPrev) >= 0 ? '#cc5555' : '#55aa55', fontSize: 11, marginLeft: 'auto' }}>
+                    <span style={{ color: (oppNow - oppPrev) >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 11, marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(oppPrev, oppNow) : `${oppNow}`}
                     </span>
                   </div>

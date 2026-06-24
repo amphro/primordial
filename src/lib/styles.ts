@@ -10,8 +10,8 @@ export const s = {
   } satisfies CSSProperties,
 
   card: {
-    background: '#0d1520',
-    border: '1px solid #1e3050',
+    background: 'var(--clr-card)',
+    border: '1px solid var(--clr-border-hi)',
     borderRadius: 8,
     padding: '48px 56px',
     textAlign: 'center',
@@ -21,8 +21,8 @@ export const s = {
 
   primaryButton: {
     display: 'inline-block',
-    background: '#4a9eff',
-    color: '#080c14',
+    background: 'var(--clr-blue)',
+    color: 'var(--clr-bg)',
     fontFamily: 'inherit',
     fontSize: 14,
     fontWeight: 700,
@@ -37,22 +37,22 @@ export const s = {
   ghostButton: {
     display: 'inline-block',
     background: 'transparent',
-    color: '#4a9eff',
+    color: 'var(--clr-blue)',
     fontFamily: 'inherit',
     fontSize: 14,
     letterSpacing: 1,
     padding: '12px 28px',
     borderRadius: 4,
-    border: '1px solid #1e3050',
+    border: '1px solid var(--clr-border-hi)',
     cursor: 'pointer',
     textDecoration: 'none',
   } satisfies CSSProperties,
 
   input: {
-    background: '#0a1018',
-    border: '1px solid #1e3050',
+    background: 'var(--clr-input-bg)',
+    border: '1px solid var(--clr-border-hi)',
     borderRadius: 4,
-    color: '#e0e8f0',
+    color: 'var(--clr-text)',
     fontFamily: 'inherit',
     fontSize: 14,
     padding: '10px 14px',
@@ -63,7 +63,7 @@ export const s = {
   label: {
     fontSize: 11,
     letterSpacing: 2,
-    color: '#3a5a7a',
+    color: 'var(--clr-text-muted)',
     textTransform: 'uppercase' as const,
     marginBottom: 6,
     display: 'block',

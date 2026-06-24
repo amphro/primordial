@@ -9,7 +9,7 @@ interface Props {
 }
 
 function deltaColor(d: number): string {
-  return d > 0 ? '#6af080' : '#f08060'
+  return d > 0 ? 'var(--clr-pos)' : 'var(--clr-neg)'
 }
 
 function deltaStr(d: number): string {
@@ -53,7 +53,7 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: '#c8a840', minWidth: 70 }}>
+      <span style={{ color: 'var(--clr-nutrient)', minWidth: 70 }}>
         <span style={{ fontSize: 11 }}>⬡ </span>
         {nuts}
         {dNuts !== null && dNuts !== 0 && (
@@ -64,7 +64,7 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: '#c080ff', minWidth: 80, fontSize: 12 }}>
+      <span style={{ color: 'var(--clr-power)', minWidth: 80, fontSize: 12 }}>
         <span>◆ </span>
         <span style={{ color: '#4a9eff' }}>{blueResources}</span>
         <span style={{ color: 'var(--clr-text-dim)', margin: '0 3px' }}>╱</span>

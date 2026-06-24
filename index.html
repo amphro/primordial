@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>PRIMORDIAL</title>
+    <!-- Intentionally duplicates --clr-bg/--clr-text from src/index.css.
+         CSS vars aren't available until the bundle loads; this prevents FOUC. -->
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body, #root { height: 100%; }
