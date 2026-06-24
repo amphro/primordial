@@ -15,6 +15,19 @@ import type { GameResolution, RoundRecord } from '@shared/sim/runGame'
 import { SIM_VERSION } from '@shared/sim/runGame'
 import { applyBoardEvent } from '@shared/sim/events'
 import type { Strategy } from '@shared/strategy'
+import Logo from '../components/Logo'
+import Tooltip from '../components/Tooltip'
+
+const ACTION_DESC: Record<string, string> = {
+  GROW:    'GROW — Extra reproduction near nutrients.\nBoosts cell count using nearby nutrient charges.',
+  HUNT:    'HUNT — Cells chase and capture enemies.\nOffensive; countered by WALL.',
+  ARMOR:   'ARMOR — Cells gain shields absorbing hits.\nDefensive; counters PULSE.',
+  PULSE:   'PULSE — Shockwave kills % of enemies in radius.\nCountered by ARMOR.',
+  TOXIN:   'TOXIN — Poisons tiles; enemies die on contact.\n3-tick duration. Costs 3 power resources.',
+  SCATTER: 'SCATTER — Reproduce ignoring nutrients.\nSpread into starved or isolated zones.',
+  WALL:    'WALL — Spawn barriers facing the enemy.\n3-tick duration. Costs 2 power resources.',
+  FEAST:   'FEAST — Cells near nutrients reproduce multiple times.\nBurst growth. Costs 2 power resources.',
+}
 
 const BASE_INTERVAL_MS = 5000  // 5s per round at 1× speed
 
@@ -371,7 +384,10 @@ export default function Game() {
 
       {/* Header */}
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: '#3a5a7a', fontSize: 11, letterSpacing: 2 }}>PRIMORDIAL</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Logo size={18} />
+          <span style={{ color: '#3a5a7a', fontSize: 11, letterSpacing: 2 }}>PRIMORDIAL</span>
+        </span>
         <span style={{ fontSize: 11 }}>
           <span style={{ color: '#3a5a7a' }}>{code} · </span>
           <span style={{ color: connected ? '#00cc66' : '#3a5a7a' }}>{connected ? '● live' : '○ connecting'}</span>
@@ -464,14 +480,18 @@ export default function Game() {
                 <div key={entry.round} style={{ background: '#0a1420', border: '1px solid #1a2a3a', borderRadius: 3, padding: '5px 8px' }}>
                   <div style={{ color: '#7a9aba', fontSize: 10, marginBottom: 3 }}>Round {entry.round + 1}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ color: myAccent, fontSize: 10 }}>{mySpec.action}</span>
+                    <Tooltip text={`${ACTION_DESC[mySpec.action] ?? mySpec.action}\n\nRule: ${myColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
+                      <span style={{ color: myAccent, fontSize: 10, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent + '60' }}>{mySpec.action}</span>
+                    </Tooltip>
                     <span style={{ color: (myNow - myPrev) >= 0 ? '#33bb66' : '#dd5555', fontSize: 10, fontWeight: 'bold', marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(myPrev, myNow) : `${myNow}`}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <span style={{ color: '#3a5a7a', fontSize: 9 }}>vs </span>
-                    <span style={{ color: oppAccent, fontSize: 9 }}>{oppSpec.action}</span>
+                    <Tooltip text={`${ACTION_DESC[oppSpec.action] ?? oppSpec.action}\n\nRule: ${oppColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
+                      <span style={{ color: oppAccent, fontSize: 9, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent + '60' }}>{oppSpec.action}</span>
+                    </Tooltip>
                     <span style={{ color: (oppNow - oppPrev) >= 0 ? '#cc5555' : '#55aa55', fontSize: 9, marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(oppPrev, oppNow) : `${oppNow}`}
                     </span>

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 const CELL_COLOR = ['#0a1020', '#4a9eff', '#ff6b4a', '#1a4488', '#882010'] as const
 
@@ -116,6 +116,24 @@ function drawEffect(ctx: CanvasRenderingContext2D, effect: AnimEffect, t: number
 
 const BIRTH_DURATION = 650  // ms for new-cell bloom
 
+const CELL_TOOLTIP: Record<number, string> = {
+  1: 'Blue cell\nLiving organism competing for territory.',
+  2: 'Red cell\nLiving organism competing for territory.',
+  3: 'Blue wall\nBarrier placed by WALL action (3-tick duration).\nBlocks enemy movement and buffs defense.',
+  4: 'Red wall\nBarrier placed by WALL action (3-tick duration).\nBlocks enemy movement and buffs defense.',
+}
+
+const ACTION_DESC: Record<string, string> = {
+  GROW:    'GROW — Extra reproduction near nutrients.\nBoosts cell count using nearby nutrient charges.',
+  HUNT:    'HUNT — Cells chase and capture enemies.\nOffensive; countered by WALL.',
+  ARMOR:   'ARMOR — Cells gain shields absorbing hits.\nDefensive; counters PULSE.',
+  PULSE:   'PULSE — Shockwave kills % of enemies in radius.\nCountered by ARMOR.',
+  TOXIN:   'TOXIN — Poisons tiles; enemies die on contact.\n3-tick duration. Costs 3 power resources.',
+  SCATTER: 'SCATTER — Reproduce ignoring nutrients.\nSpread into starved or isolated zones.',
+  WALL:    'WALL — Spawn barriers facing the enemy.\n3-tick duration. Costs 2 power resources.',
+  FEAST:   'FEAST — Cells near nutrients reproduce multiple times.\nBurst growth. Costs 2 power resources.',
+}
+
 export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, nutrientType, anim, gridW = 40, gridH = 40, size = 480 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -123,6 +141,7 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, 
   const frameRef = useRef<number>(0)
   const prevGridRef = useRef<number[]>([])
   const birthCellsRef = useRef<{ i: number; color: number; ts: number }[]>([])
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
 
   // Main grid render
   useEffect(() => {
@@ -287,8 +306,43 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, 
     return () => cancelAnimationFrame(frameRef.current)
   }, [anim, grid, gridW, gridH, size])
 
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const px = (e.clientX - rect.left) / rect.width
+    const py = (e.clientY - rect.top) / rect.height
+    const gx = Math.floor(px * gridW)
+    const gy = Math.floor(py * gridH)
+    if (gx < 0 || gx >= gridW || gy < 0 || gy >= gridH) { setTooltip(null); return }
+    const i = gy * gridW + gx
+    let text: string | null = null
+
+    if (grid[i] > 0 && grid[i] !== undefined) {
+      text = CELL_TOOLTIP[grid[i]] ?? null
+    } else if (nutrients?.[i] > 0) {
+      const isPower = nutrientType?.[i] === 1
+      if (isPower) {
+        text = 'Power nutrient ◆\nCollected when your cells consume it.\nFills your resource pool.\nResources gate TOXIN (3), WALL (2), FEAST (2).'
+      } else {
+        text = 'Nutrient ⬡\nConsumed by adjacent cells to reproduce.\nRequired by GROW and FEAST actions.\n(not needed by SCATTER)'
+      }
+    } else if (toxin?.[i]) {
+      const isRed = (toxin[i] & 0x80) !== 0
+      const ticks = toxin[i] & 0x7F
+      text = `${isRed ? 'Red' : 'Blue'} toxin\nPoisons this tile for ${ticks} more tick${ticks === 1 ? '' : 's'}.\n${isRed ? 'Blue' : 'Red'} cells here die each tick.`
+    }
+
+    if (text) {
+      setTooltip({ text, x: e.clientX, y: e.clientY })
+    } else {
+      setTooltip(null)
+    }
+  }
+
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: size }}>
+    <div style={{ position: 'relative', width: '100%', maxWidth: size }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setTooltip(null)}
+    >
       <canvas
         ref={canvasRef}
         width={size}
@@ -301,6 +355,27 @@ export default function GameCanvas({ grid, nutrients, armor, starvation, toxin, 
         height={size}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: 4, pointerEvents: 'none' }}
       />
+      {tooltip && (
+        <div style={{
+          position: 'fixed',
+          left: tooltip.x + 14,
+          top: tooltip.y - 10,
+          background: '#0d1e30',
+          border: '1px solid #2a4a6a',
+          borderRadius: 4,
+          padding: '5px 9px',
+          fontSize: 11,
+          color: '#c8d8e8',
+          whiteSpace: 'pre-line',
+          maxWidth: 230,
+          lineHeight: 1.5,
+          zIndex: 9999,
+          pointerEvents: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+        }}>
+          {tooltip.text}
+        </div>
+      )}
     </div>
   )
 }
