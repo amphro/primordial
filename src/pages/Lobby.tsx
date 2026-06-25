@@ -68,6 +68,12 @@ export default function Lobby() {
             <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
               How it works →
             </a>
+            <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              Terms
+            </a>
+            <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              Privacy
+            </a>
           </div>
         </div>
       </div>

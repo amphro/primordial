@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" fill="none">
+  <!-- Background -->
+  <rect width="1200" height="400" fill="#080c14"/>
+
+  <!-- === CELL GRID (left panel, 5x5, step=60px, origin x=45 y=55) === -->
+  <!-- Blue territory — fades from top-left toward center -->
+  <rect x="45"  y="55"  width="50" height="50" rx="6" fill="#4a9eff"/>
+  <rect x="45"  y="115" width="50" height="50" rx="6" fill="#4a9eff"/>
+  <rect x="45"  y="175" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.7"/>
+  <rect x="45"  y="235" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.4"/>
+  <rect x="45"  y="295" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.15"/>
+  <rect x="105" y="55"  width="50" height="50" rx="6" fill="#4a9eff"/>
+  <rect x="105" y="115" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.8"/>
+  <rect x="105" y="175" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.45"/>
+  <rect x="105" y="235" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.2"/>
+  <rect x="165" y="55"  width="50" height="50" rx="6" fill="#4a9eff" opacity="0.65"/>
+  <rect x="165" y="115" width="50" height="50" rx="6" fill="#4a9eff" opacity="0.3"/>
+
+  <!-- Red territory — fades from bottom-right toward center -->
+  <rect x="285" y="295" width="50" height="50" rx="6" fill="#ff6b4a"/>
+  <rect x="285" y="235" width="50" height="50" rx="6" fill="#ff6b4a"/>
+  <rect x="285" y="175" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.7"/>
+  <rect x="285" y="115" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.4"/>
+  <rect x="285" y="55"  width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.15"/>
+  <rect x="225" y="295" width="50" height="50" rx="6" fill="#ff6b4a"/>
+  <rect x="225" y="235" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.8"/>
+  <rect x="225" y="175" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.45"/>
+  <rect x="225" y="115" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.2"/>
+  <rect x="165" y="295" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.65"/>
+  <rect x="165" y="235" width="50" height="50" rx="6" fill="#ff6b4a" opacity="0.3"/>
+
+  <!-- Gold nutrient dot at battle-zone center (col=2, row=2) -->
+  <circle cx="190" cy="200" r="22" fill="#c8a840" opacity="0.9"/>
+  <circle cx="190" cy="200" r="13" fill="#e8c860"/>
+
+  <!-- Subtle vertical divider -->
+  <line x1="370" y1="48" x2="370" y2="352" stroke="#1a2e48" stroke-width="1"/>
+
+  <!-- === TEXT (right panel, x from 410) === -->
+  <text
+    x="410"
+    y="192"
+    font-family="'Courier New', Courier, monospace"
+    font-size="70"
+    font-weight="700"
+    letter-spacing="10"
+    fill="#4a9eff">PRIMORDIAL</text>
+
+  <text
+    x="413"
+    y="248"
+    font-family="'Courier New', Courier, monospace"
+    font-size="17"
+    letter-spacing="0.5"
+    fill="#3a6080">A cellular automaton where your only weapon</text>
+  <text
+    x="413"
+    y="273"
+    font-family="'Courier New', Courier, monospace"
+    font-size="17"
+    letter-spacing="0.5"
+    fill="#3a6080">is a plain-English strategy.</text>
+</svg>
