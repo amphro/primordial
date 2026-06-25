@@ -15,8 +15,9 @@
 - Wrangler 4.x dev: auto-parses AI JSON output into a plain object in `result.response`. The strategist detects this and `JSON.stringify()`s it back before extraction. Don't remove that defensive path.
 - LLM often gets rule ordering wrong — the system prompt reminds it to put highest-urgency rules first.
 
-## Dev conventions
+## Workflow
 
+- **Feature branches and PRs only — do not commit directly to `main`.** Create a branch for each piece of work, push it, and open a PR.
 - Background dev servers log to `logs/` (gitignored, not to the terminal).
 - Dev panel auto-opens on localhost; collapsed in prod. Uses `location.hostname === 'localhost'` check.
 

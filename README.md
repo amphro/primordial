@@ -6,7 +6,7 @@ Two colonies of cells fight for control of a petri dish. Before the battle start
 
 > **Experimental hobby project — use at your own risk.**
 
-**[Play](https://primordial.thomasdvornik.com)** · **[How to play](docs/how-to-play.md)** · **[Design notes](docs/design.md)**
+**[How to play](docs/how-to-play.md)** · **[Design notes](docs/design.md)**
 
 ---
 
@@ -60,21 +60,8 @@ worker/        Cloudflare Worker: API, auth, Durable Object (GameRoom)
 src/           React client
 migrations/    D1 SQL migrations
 docs/          GitHub Pages site
-notes/         Internal design docs and history (not published)
 .claude/       Skills and settings for Claude Code contributors
 ```
-
----
-
-## Design docs and history
-
-Internal notes live in `notes/` — these are historical and may describe earlier designs:
-
-- [Game Design Document](notes/GAME-DESIGN.md)
-- [Game Concepts](notes/GAME-CONCEPTS.md)
-- [Features](notes/FEATURES.md)
-- [Research](notes/RESEARCH.md)
-- [Original implementation plan](notes/PLAN.md)
 
 ---
 
