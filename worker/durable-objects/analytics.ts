@@ -21,7 +21,7 @@ export interface PromptClassifiedEvent {
 
 export interface GameOverEvent {
   gameCode: string
-  winnerColor: 'blue' | 'red'
+  winnerColor: 'blue' | 'red' | 'tie'
   winReason: 'threshold' | 'rounds'
   finalBluePct: number
   finalRedPct: number

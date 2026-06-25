@@ -42,7 +42,7 @@ export interface TickResult {
   redPct: number
   blueCells: number
   redCells: number
-  winner: 'blue' | 'red' | null
+  winner: 'blue' | 'red' | 'tie' | null
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -765,7 +765,7 @@ function checkCounters(
 // ── win condition ─────────────────────────────────────────────────────────────
 
 function checkWin(grid: Uint8Array, config: GameConfig, round: number): {
-  winner: 'blue' | 'red' | null
+  winner: 'blue' | 'red' | 'tie' | null
   bluePct: number
   redPct: number
   blueCells: number
@@ -779,10 +779,11 @@ function checkWin(grid: Uint8Array, config: GameConfig, round: number): {
   const total = blue + red
   const bluePct = total === 0 ? 0 : (blue / total) * 100
   const redPct  = total === 0 ? 0 : (red  / total) * 100
-  let winner: 'blue' | 'red' | null = null
-  if (bluePct >= config.winThresholdPct) winner = 'blue'
-  else if (redPct >= config.winThresholdPct) winner = 'red'
-  else if (round >= config.totalRounds - 1) winner = blue >= red ? 'blue' : 'red'
+  let winner: 'blue' | 'red' | 'tie' | null = null
+  if (total === 0) winner = 'tie'                              // mutual extinction
+  else if (bluePct >= config.winThresholdPct) winner = 'blue'
+  else if (redPct  >= config.winThresholdPct) winner = 'red'
+  else if (round >= config.totalRounds - 1) winner = blue > red ? 'blue' : blue < red ? 'red' : 'tie'
   return { winner, bluePct, redPct, blueCells: blue, redCells: red }
 }
 

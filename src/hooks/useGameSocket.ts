@@ -32,6 +32,7 @@ export interface StrategyLockedMsg {
   readback: string
   strategy?: Strategy
   latencyMs: number
+  tokenUsage?: { promptTokens: number; completionTokens: number } | null
 }
 
 export interface ResolutionMsg extends GameResolution {
@@ -65,6 +66,8 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
   const closingRef = useRef(false)
+  const everConnectedRef = useRef(false)
+  const failedAttemptsRef = useRef(0)
   onMessageRef.current = onMessage
 
   const connect = useCallback(() => {
@@ -73,13 +76,23 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
     const ws = new WebSocket(`${protocol}//${location.host}/api/games/${code}/ws`)
     wsRef.current = ws
 
-    ws.onopen  = () => { setConnected(true); closingRef.current = false }
+    ws.onopen  = () => {
+      setConnected(true)
+      closingRef.current = false
+      everConnectedRef.current = true
+      failedAttemptsRef.current = 0
+    }
     ws.onerror = (e) => console.error('[ws] error', e)
     ws.onclose = (e) => {
       setConnected(false)
       console.warn('[ws] closed code=%d reason=%s', e.code, e.reason || '(none)')
       if (closingRef.current) return
       if (e.code === 4010 || e.code === 4410) { setGoneError(true); return }
+      // Abnormal close before ever connecting — likely game not found (HTTP 404 on upgrade)
+      if (e.code === 1006 && !everConnectedRef.current) {
+        failedAttemptsRef.current += 1
+        if (failedAttemptsRef.current >= 3) { setGoneError(true); return }
+      }
       setTimeout(connect, 2000)
     }
     ws.onmessage = (event) => {
@@ -93,6 +106,8 @@ export function useGameSocket(code: string | undefined, onMessage: (msg: GameMsg
 
   useEffect(() => {
     closingRef.current = false
+    everConnectedRef.current = false
+    failedAttemptsRef.current = 0
     connect()
     return () => {
       closingRef.current = true

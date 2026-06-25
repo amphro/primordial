@@ -34,16 +34,16 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
       alignItems: 'center',
       gap: 8,
       padding: '5px 10px',
-      background: '#0a1420',
-      border: '1px solid #1a2a3a',
+      background: 'var(--clr-surface)',
+      border: '1px solid var(--clr-border)',
       borderRadius: 4,
       marginBottom: 6,
       fontSize: 12,
       fontFamily: 'monospace',
       userSelect: 'none',
     }}>
-      <span style={{ color: myColor === 'blue' ? '#6ab8ff' : '#4a88cc', minWidth: 90 }}>
-        <span style={{ color: '#4a9eff', fontWeight: myColor === 'blue' ? 700 : 400 }}>▪ </span>
+      <span style={{ color: myColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-blue-dim)', minWidth: 90 }}>
+        <span style={{ color: 'var(--clr-blue)', fontWeight: myColor === 'blue' ? 700 : 400 }}>▪ </span>
         {blue}
         {dBlue !== null && dBlue !== 0 && (
           <span style={{ color: deltaColor(dBlue), fontSize: 11 }}> {deltaStr(dBlue)}</span>
@@ -66,16 +66,16 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
 
       <span style={{ color: 'var(--clr-power)', minWidth: 80, fontSize: 12 }}>
         <span>◆ </span>
-        <span style={{ color: '#4a9eff' }}>{blueResources}</span>
+        <span style={{ color: 'var(--clr-blue)' }}>{blueResources}</span>
         <span style={{ color: 'var(--clr-text-dim)', margin: '0 3px' }}>╱</span>
-        <span style={{ color: '#ff6b4a' }}>{redResources}</span>
+        <span style={{ color: 'var(--clr-red)' }}>{redResources}</span>
         <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> pwr</span>
       </span>
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: myColor === 'red' ? '#ffaa88' : '#cc6844', minWidth: 90 }}>
-        <span style={{ color: '#ff6b4a', fontWeight: myColor === 'red' ? 700 : 400 }}>▪ </span>
+      <span style={{ color: myColor === 'red' ? 'var(--clr-red)' : 'var(--clr-red-dim)', minWidth: 90 }}>
+        <span style={{ color: 'var(--clr-red)', fontWeight: myColor === 'red' ? 700 : 400 }}>▪ </span>
         {red}
         {dRed !== null && dRed !== 0 && (
           <span style={{ color: deltaColor(dRed), fontSize: 11 }}> {deltaStr(dRed)}</span>

@@ -42,6 +42,9 @@ METRICS you can check in conditions:
 Operators: "lt" (<), "lte" (≤), "gt" (>), "gte" (≥)
 Rules: max 6; all conditions in a rule are AND'd. When multiple rules match the same round, they cycle in order (round % matchCount), so all matching rules get turns.
 
+IMPORTANT: Do not default to PULSE. Pick a varied, interesting strategy that actually matches the intent described.
+If asked for a "random strategy", choose an unexpected and creative combination of actions — avoid GROW-only or PULSE-heavy defaults.
+
 Output ONLY valid JSON — no prose:
 {
   "rules": [
@@ -50,17 +53,43 @@ Output ONLY valid JSON — no prose:
   "fallback": { "action": "GROW", "zone": "ALL", "intensity": "NORMAL" }
 }`
 
-const DEFAULT_STRATEGY: Strategy = {
-  rules: [],
-  fallback: { action: 'GROW', zone: 'ALL', intensity: 'NORMAL' },
+// Varied bot prompts — picked randomly so each game has a different bot personality
+const BOT_PROMPTS = [
+  'Build walls early, then hunt aggressively once I have resources',
+  'Scatter to dominate empty space, then toxin the enemy when I have power',
+  'Feast on nutrients early for a big cell lead, then armor up defensively',
+  'Hunt relentlessly from round 1 — pure aggression, no defense',
+  'Grow and scatter to fill the board, pulse if enemies get close',
+  'Save resources for feast and wall combos — slow but unstoppable expansion',
+  'Armor early to survive, then counter-attack with hunt and toxin',
+  'Create a random strategy',
+]
+
+export const DEFAULT_BOT_READBACK = 'Strategist offline — using fallback.'
+export const DEFAULT_BOT_STRATEGY: Strategy = {
+  rules: [
+    { when: [{ metric: 'enemyDistance', op: 'lte', value: 5 }], do: { action: 'HUNT', zone: 'ALL', intensity: 'NORMAL' } },
+    { when: [{ metric: 'cellRatio', op: 'lt', value: 0.4 }], do: { action: 'GROW', zone: 'ALL', intensity: 'AGGRESSIVE' } },
+  ],
+  fallback: { action: 'SCATTER', zone: 'ALL', intensity: 'NORMAL' },
+}
+
+export function pickBotPrompt(seed: number): string {
+  return BOT_PROMPTS[seed % BOT_PROMPTS.length]
+}
+
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
 }
 
 export async function generateStrategy(
   prompt: string,
   ai: Ai,
-): Promise<{ strategy: Strategy; readback: string; latencyMs: number }> {
+): Promise<{ strategy: Strategy; readback: string; latencyMs: number; tokenUsage: TokenUsage | null }> {
   const t0 = Date.now()
   let rawText = ''
+  let tokenUsage: TokenUsage | null = null
   try {
     const aiResult = await ai.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
       messages: [
@@ -79,6 +108,15 @@ export async function generateStrategy(
       const rawResponse = obj.response
       const ctor = (rawResponse as { constructor?: { name?: string } })?.constructor?.name ?? 'null'
       console.log('[strategist] response type:', typeof rawResponse, ctor)
+
+      // Extract token usage if present
+      const usage = obj.usage as Record<string, number> | undefined
+      if (usage && typeof usage.prompt_tokens === 'number') {
+        tokenUsage = {
+          promptTokens: usage.prompt_tokens,
+          completionTokens: usage.completion_tokens ?? 0,
+        }
+      }
 
       if (typeof rawResponse === 'string') {
         rawText = rawResponse
@@ -116,14 +154,14 @@ export async function generateStrategy(
 
     const strategy = parsed
       ? validateStrategy(parsed, DEFAULT_CONFIG.totalRounds)
-      : DEFAULT_STRATEGY
+      : DEFAULT_BOT_STRATEGY
 
-    console.log('[strategist] rules:', strategy.rules.length, '| fallback:', strategy.fallback.action)
+    console.log('[strategist] rules:', strategy.rules.length, '| fallback:', strategy.fallback.action, '| tokens:', tokenUsage)
     const readback = strategyReadback(strategy)
-    return { strategy, readback, latencyMs: Date.now() - t0 }
+    return { strategy, readback, latencyMs: Date.now() - t0, tokenUsage }
   } catch (err) {
     console.error('[strategist] failed — raw:', String(rawText).slice(0, 200), '| error:', err)
-    return { strategy: DEFAULT_STRATEGY, readback: 'Grow steadily (default).', latencyMs: Date.now() - t0 }
+    return { strategy: DEFAULT_BOT_STRATEGY, readback: DEFAULT_BOT_READBACK, latencyMs: Date.now() - t0, tokenUsage: null }
   }
 }
 

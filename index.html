@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>PRIMORDIAL</title>
-    <!-- Intentionally duplicates --clr-bg/--clr-text from src/index.css.
-         CSS vars aren't available until the bundle loads; this prevents FOUC. -->
+    <!-- Set theme attribute before first paint to prevent flash. -->
+    <script>
+      (function () {
+        var stored; try { stored = localStorage.getItem('theme') } catch (e) {}
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
+    <!-- Duplicates --clr-bg/--clr-text for first-paint before the CSS bundle loads. -->
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body, #root { height: 100%; }
@@ -16,6 +23,7 @@
         font-family: 'Courier New', monospace;
         font-size: 15px;
       }
+      html[data-theme="light"] body { background: #eef2f7; color: #0d1a28; }
     </style>
   </head>
   <body>
