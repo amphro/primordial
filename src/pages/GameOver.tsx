@@ -41,7 +41,7 @@ export default function GameOver() {
   const [analysis, setAnalysis] = useState<string | null>(null)
 
   const color = state.winner === 'blue' ? 'var(--clr-blue)' : state.winner === 'red' ? 'var(--clr-red)' : 'var(--clr-text-muted)'
-  const label = state.winner ? `${state.winner.toUpperCase()} WINS` : 'GAME OVER'
+  const label = state.winner === 'tie' ? 'TIE' : state.winner ? `${state.winner.toUpperCase()} WINS` : 'GAME OVER'
 
   const rounds = state.rounds ?? []
 

@@ -39,7 +39,7 @@ const SPEED_LABEL: Record<Speed, string> = { 0.5: '0.5×', 1: '1×', 2: 'Normal'
 const DEFAULT_SPEED: Speed = 2
 
 interface GameOverData {
-  winner: 'blue' | 'red'
+  winner: 'blue' | 'red' | 'tie'
   winReason: string
   scores: { blue: number; red: number }
 }
@@ -335,9 +335,9 @@ export default function Game() {
     }
 
     if (msg.type === 'game_over') {
-      const m = msg as { type: string; winner: 'blue' | 'red'; winReason: string; scores: { blue: number; red: number } }
+      const m = msg as { type: string; winner: 'blue' | 'red' | 'tie'; winReason: string; scores: { blue: number; red: number } }
       const mc = myColorRef.current
-      if (mc) { if (m.winner === mc) playWin(); else playLose() }
+      if (mc && m.winner !== 'tie') { if (m.winner === mc) playWin(); else playLose() }
       // Store — animation step will trigger navigate when the last round finishes
       pendingGameOverRef.current = { winner: m.winner, winReason: m.winReason, scores: m.scores }
       // If animation is already done (reconnect scenario), show result now
@@ -528,10 +528,10 @@ export default function Game() {
 
       {/* Result banner — shown when animation ends, stays on board */}
       {gameFinished && gameOverData && (
-        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: `1px solid ${gameOverData.winner === myColor ? 'var(--clr-win-border)' : 'var(--clr-lose-border)'}`, borderRadius: 6, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: `1px solid ${gameOverData.winner === 'tie' ? 'var(--clr-border-hi)' : gameOverData.winner === myColor ? 'var(--clr-win-border)' : 'var(--clr-lose-border)'}`, borderRadius: 6, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
-              {gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
+            <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === 'tie' ? 'var(--clr-text-muted)' : gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
+              {gameOverData.winner === 'tie' ? 'TIE' : gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
             </div>
             <div className="text-muted" style={{ fontSize: 12, marginTop: 3 }}>
               Blue {gameOverData.scores.blue}% · Red {gameOverData.scores.red}%

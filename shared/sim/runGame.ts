@@ -30,7 +30,7 @@ export interface GameResolution {
   config: GameConfig
   blueStrategy: Strategy
   redStrategy: Strategy
-  winner: 'blue' | 'red'
+  winner: 'blue' | 'red' | 'tie'
   finalScores: { blue: number; red: number }
   rounds: RoundRecord[]
   events: BoardEvent[]
@@ -107,7 +107,7 @@ export function runGame(
     config,
     blueStrategy,
     redStrategy,
-    winner: last.blueCells >= last.redCells ? 'blue' : 'red',
+    winner: last.blueCells > last.redCells ? 'blue' : last.redCells > last.blueCells ? 'red' : 'tie',
     finalScores: { blue: bluePct, red: 100 - bluePct },
     rounds,
     events,

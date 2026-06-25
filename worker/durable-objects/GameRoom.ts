@@ -466,7 +466,7 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     }
   }
 
-  private async endGame(winner: 'blue' | 'red', scores: { blue: number; red: number }): Promise<void> {
+  private async endGame(winner: 'blue' | 'red' | 'tie', scores: { blue: number; red: number }): Promise<void> {
     if (this.phase === 'finished') return
     this.phase = 'finished'
     await this.ctx.storage.put('phase', 'finished')
@@ -481,13 +481,19 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     })
 
     try {
-      const winnerRow = await this.env.DB.prepare(
-        'SELECT user_id FROM game_players WHERE game_code = ? AND color = ?',
-      ).bind(this.gameCode, winner).first<{ user_id: string }>()
-      const winnerId = winnerRow?.user_id ?? winner
-      await this.env.DB.prepare(
-        "UPDATE games SET status = 'finished', winner_id = ?, finished_at = ? WHERE code = ?",
-      ).bind(winnerId, Date.now(), this.gameCode).run()
+      if (winner !== 'tie') {
+        const winnerRow = await this.env.DB.prepare(
+          'SELECT user_id FROM game_players WHERE game_code = ? AND color = ?',
+        ).bind(this.gameCode, winner).first<{ user_id: string }>()
+        const winnerId = winnerRow?.user_id ?? winner
+        await this.env.DB.prepare(
+          "UPDATE games SET status = 'finished', winner_id = ?, finished_at = ? WHERE code = ?",
+        ).bind(winnerId, Date.now(), this.gameCode).run()
+      } else {
+        await this.env.DB.prepare(
+          "UPDATE games SET status = 'finished', winner_id = NULL, finished_at = ? WHERE code = ?",
+        ).bind(Date.now(), this.gameCode).run()
+      }
     } catch { /* non-fatal */ }
 
     this.broadcast({ type: 'game_over', winner, winReason: 'rounds', scores })
