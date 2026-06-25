@@ -169,6 +169,10 @@ export class GameRoom extends DurableObject<Env> {
     await this.ctx.storage.put('botColor', this.botColor ?? '')
     await this.persistGridState()
 
+    // Write seed to D1 so replay can be reconstituted if DO storage is cleared
+    void this.env.DB.prepare('UPDATE games SET seed = ? WHERE code = ?')
+      .bind(this.seed, this.gameCode).run()
+
     // Bot: generate a varied strategy via LLM, confirm immediately
     if (this.botColor) {
       const botPrompt = pickBotPrompt(this.seed)
@@ -289,6 +293,17 @@ export class GameRoom extends DurableObject<Env> {
     this.resolution = resolution
     await this.ctx.storage.put('resolution', resolution)
 
+    // Write strategies to D1 for replay reconstitution if DO storage is later cleared
+    void this.env.DB.prepare(
+      'UPDATE games SET blue_strategy = ?, red_strategy = ?, blue_readback = ?, red_readback = ? WHERE code = ?',
+    ).bind(
+      JSON.stringify(this.blueStrategy),
+      JSON.stringify(this.redStrategy),
+      this.blueReadback ?? '',
+      this.redReadback  ?? '',
+      this.gameCode,
+    ).run()
+
     await this.ctx.storage.deleteAlarm()
 
     // Write analytics for each round
@@ -374,12 +389,52 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     })
   }
 
-  private handleWebSocket(request: Request): Response {
+  private async handleWebSocket(request: Request): Promise<Response> {
     const userId      = request.headers.get('X-User-Id') ?? ''
     const displayName = request.headers.get('X-Display-Name') ?? 'Player'
     const headerColor = request.headers.get('X-Player-Color') as 'blue' | 'red' | ''
 
     if (!userId) return new Response('Unauthorized', { status: 401 })
+
+    // If DO storage was cleared, try to derive the game code from the request URL
+    if (!this.gameCode) {
+      const match = new URL(request.url).pathname.match(/\/games\/([A-Z0-9]{6})\//)
+      if (match) this.gameCode = match[1]
+    }
+
+    // Reconstitute resolution from D1 if DO storage was wiped for a finished game
+    if (!this.resolution && this.gameCode) {
+      try {
+        const row = await this.env.DB.prepare(
+          'SELECT status, seed, blue_strategy, red_strategy, blue_readback, red_readback FROM games WHERE code = ?',
+        ).bind(this.gameCode).first<{
+          status: string; seed: number | null
+          blue_strategy: string | null; red_strategy: string | null
+          blue_readback: string | null; red_readback: string | null
+        }>()
+
+        if (row?.status === 'finished' && row.seed != null && row.blue_strategy && row.red_strategy) {
+          const blueStrat = JSON.parse(row.blue_strategy) as Strategy
+          const redStrat  = JSON.parse(row.red_strategy)  as Strategy
+          this.seed         = row.seed
+          this.blueStrategy = blueStrat
+          this.redStrategy  = redStrat
+          this.blueReadback = row.blue_readback ?? null
+          this.redReadback  = row.red_readback  ?? null
+          this.phase        = 'finished'
+          this.resolution   = runGame(this.seed, this.config, blueStrat, redStrat)
+          console.log('[GameRoom] reconstituted resolution from D1 for', this.gameCode)
+          // Restore DO storage so future connections skip this path
+          void this.ctx.storage.put('phase',        'finished')
+          void this.ctx.storage.put('seed',          this.seed)
+          void this.ctx.storage.put('blueStrategy',  blueStrat)
+          void this.ctx.storage.put('redStrategy',   redStrat)
+          void this.ctx.storage.put('blueReadback',  this.blueReadback ?? '')
+          void this.ctx.storage.put('redReadback',   this.redReadback  ?? '')
+          void this.ctx.storage.put('resolution',    this.resolution)
+        }
+      } catch { /* non-fatal — proceed without reconstitution */ }
+    }
 
     const pair = new WebSocketPair()
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket]
