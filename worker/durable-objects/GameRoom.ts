@@ -5,7 +5,7 @@ import type { GridState } from '../../shared/sim/simulation'
 import { runGame } from '../../shared/sim/runGame'
 import type { GameResolution } from '../../shared/sim/runGame'
 import { generateEvents } from '../../shared/sim/events'
-import { generateStrategy } from './strategist'
+import { generateStrategy, pickBotPrompt, DEFAULT_BOT_STRATEGY, DEFAULT_BOT_READBACK } from './strategist'
 import type { Strategy } from '../../shared/strategy'
 import { makeRng } from '../../shared/rng'
 import { writeGameOver, writeTickResolved, writeCounterTriggered } from './analytics'
@@ -25,16 +25,6 @@ interface ConnectedPlayer {
   color: 'blue' | 'red'
 }
 
-// Hardcoded bot strategy — no AI needed, deterministic for balance testing
-const BOT_STRATEGY: Strategy = {
-  rules: [
-    { when: [{ metric: 'round', op: 'lt', value: 3 }], do: { action: 'PULSE', zone: 'ALL', intensity: 'AGGRESSIVE' } },
-    { when: [{ metric: 'enemyDistance', op: 'lte', value: 6 }], do: { action: 'HUNT', zone: 'ALL', intensity: 'AGGRESSIVE' } },
-    { when: [{ metric: 'cellRatio', op: 'lt', value: 0.4 }], do: { action: 'GROW', zone: 'ALL', intensity: 'AGGRESSIVE' } },
-  ],
-  fallback: { action: 'GROW', zone: 'ALL', intensity: 'NORMAL' },
-}
-const BOT_READBACK = 'Shockwave early, chase enemies when close, grow aggressively when behind.'
 
 export class GameRoom extends DurableObject<Env> {
   private players = new Map<string, ConnectedPlayer>()
@@ -178,21 +168,24 @@ export class GameRoom extends DurableObject<Env> {
     await this.ctx.storage.put('botColor', this.botColor ?? '')
     await this.persistGridState()
 
-    // Bot: set strategy + confirm immediately; no deadline alarm needed vs CPU
+    // Bot: generate a varied strategy via LLM, confirm immediately
     if (this.botColor) {
+      const botPrompt = pickBotPrompt(this.seed)
+      const { strategy: botStrategy, readback: botReadback } = await generateStrategy(botPrompt, this.env.AI)
+        .catch(() => ({ strategy: DEFAULT_BOT_STRATEGY, readback: DEFAULT_BOT_READBACK }))
       if (this.botColor === 'blue') {
-        this.blueStrategy  = BOT_STRATEGY
-        this.blueReadback  = BOT_READBACK
+        this.blueStrategy  = botStrategy
+        this.blueReadback  = botReadback
         this.blueConfirmed = true
-        await this.ctx.storage.put('blueStrategy',  BOT_STRATEGY)
-        await this.ctx.storage.put('blueReadback',  BOT_READBACK)
+        await this.ctx.storage.put('blueStrategy',  botStrategy)
+        await this.ctx.storage.put('blueReadback',  botReadback)
         await this.ctx.storage.put('blueConfirmed', true)
       } else {
-        this.redStrategy  = BOT_STRATEGY
-        this.redReadback  = BOT_READBACK
+        this.redStrategy  = botStrategy
+        this.redReadback  = botReadback
         this.redConfirmed = true
-        await this.ctx.storage.put('redStrategy',  BOT_STRATEGY)
-        await this.ctx.storage.put('redReadback',  BOT_READBACK)
+        await this.ctx.storage.put('redStrategy',  botStrategy)
+        await this.ctx.storage.put('redReadback',  botReadback)
         await this.ctx.storage.put('redConfirmed', true)
       }
     } else {
@@ -224,7 +217,7 @@ export class GameRoom extends DurableObject<Env> {
     if (color === 'blue') this.strategyBluePending = true
     else                  this.strategyRedPending  = true
 
-    const { strategy, readback, latencyMs } = await generateStrategy(prompt, this.env.AI)
+    const { strategy, readback, latencyMs, tokenUsage } = await generateStrategy(prompt, this.env.AI)
 
     if (color === 'blue') this.strategyBluePending = false
     else                  this.strategyRedPending  = false
@@ -246,7 +239,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     // Broadcast the parsed strategy so the client can show the review gate
-    this.broadcast({ type: 'strategy_locked', color, readback, strategy, latencyMs })
+    this.broadcast({ type: 'strategy_locked', color, readback, strategy, latencyMs, tokenUsage })
     // Note: tryResolve is NOT called here — player must click "Start Battle" to confirm
 
     return new Response(JSON.stringify({ queued: true, readback }), {
