@@ -10,13 +10,15 @@ interface Env {
 export async function handleGames(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
 
-  // WebSocket: public route — guests get read-only replay access without auth
+  // Public routes — no auth required
   const wsMatch = url.pathname.match(/^\/api\/games\/([A-Z0-9]{6})\/ws$/)
   if (wsMatch && request.method === 'GET') {
     const token = getSessionToken(request)
     const session = token ? await verifySession(token, env.SESSION_SECRET) : null
     return upgradeWebSocket(wsMatch[1], request, env, session)
   }
+  const infoMatch = url.pathname.match(/^\/api\/games\/([A-Z0-9]{6})$/)
+  if (infoMatch && request.method === 'GET') return getGame(infoMatch[1], env)
 
   // All other routes require auth
   const session = await requireSession(request, env)

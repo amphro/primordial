@@ -78,6 +78,19 @@ export default function Game() {
   const [myTokenUsage, setMyTokenUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null)
   const [replayCount, setReplayCount] = useState(0)
 
+  interface GameInfoPlayer { id: string; display_name: string; color: string }
+  interface GameInfoRow { code: string; status: string; winner_id: string | null; finished_at: number | null; created_at: number }
+  type GameInfoState = null | false | { game: GameInfoRow; players: GameInfoPlayer[] }
+  const [gameInfo, setGameInfo] = useState<GameInfoState>(null)
+
+  useEffect(() => {
+    if (!code) return
+    fetch(`/api/games/${code}`)
+      .then(r => r.ok ? r.json() as Promise<{ game: GameInfoRow; players: GameInfoPlayer[] }> : null)
+      .then(data => setGameInfo(data ?? false))
+      .catch(() => setGameInfo(false))
+  }, [code])
+
   // Refs — avoid stale closures inside animation timer
   const myColorRef         = useRef<'blue' | 'red' | undefined>(undefined)
   const animSimRef         = useRef<{ state: GridState; rng: () => number } | null>(null)
@@ -397,6 +410,68 @@ export default function Game() {
     return d > 0 ? `+${d}` : `${d}`
   }
 
+  // Derive overlay state from gameInfo + WS state
+  const gameNotFound   = gameInfo === false || (goneError && !gameState && gameInfo === null)
+  const notReplayable  = gameInfo && gameInfo !== false
+    && gameInfo.game.status === 'finished'
+    && goneError
+    && !resolution
+
+  function renderOverlay() {
+    if (gameNotFound) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--clr-bg)', padding: 20 }}>
+          <div style={{ background: 'var(--clr-card)', border: '1px solid var(--clr-border-hi)', borderRadius: 8, padding: '48px 56px', textAlign: 'center', maxWidth: 380, width: '100%' }}>
+            <Logo size={24} />
+            <div style={{ fontSize: 40, fontWeight: 700, color: 'var(--clr-border-hi)', letterSpacing: 4, margin: '12px 0 4px' }}>404</div>
+            <p style={{ color: 'var(--clr-text-dim)', fontSize: 13, marginBottom: 32 }}>
+              Game <span style={{ color: 'var(--clr-text-muted)', fontFamily: 'monospace' }}>{code}</span> doesn't exist.
+            </p>
+            <button style={{ background: 'var(--clr-blue)', color: 'var(--clr-bg)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, letterSpacing: 1, padding: '12px 28px', borderRadius: 4, border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => navigate('/')}>
+              Play New Game
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (notReplayable && gameInfo && gameInfo !== false) {
+      const { game, players } = gameInfo
+      const winnerPlayer = players.find(p => p.id === game.winner_id)
+      const winnerColor  = winnerPlayer?.color ?? (game.winner_id === 'bot' ? 'red' : null)
+      const winnerLabel  = game.winner_id === null ? 'Tie' : winnerColor ? `${winnerColor.toUpperCase()} wins` : 'Unknown winner'
+      const winnerClr    = winnerColor === 'blue' ? 'var(--clr-blue)' : winnerColor === 'red' ? 'var(--clr-red)' : 'var(--clr-text-muted)'
+      const playedAt     = game.finished_at ? new Date(game.finished_at).toLocaleDateString() : new Date(game.created_at).toLocaleDateString()
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--clr-bg)', padding: 20 }}>
+          <div style={{ background: 'var(--clr-card)', border: '1px solid var(--clr-border-hi)', borderRadius: 8, padding: '40px 48px', textAlign: 'center', maxWidth: 380, width: '100%' }}>
+            <Logo size={24} />
+            <p style={{ color: 'var(--clr-text-muted)', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, margin: '12px 0 4px' }}>{code}</p>
+            <div style={{ fontSize: 18, fontWeight: 700, color: winnerClr, letterSpacing: 2, marginBottom: 4 }}>{winnerLabel}</div>
+            <p style={{ color: 'var(--clr-text-dim)', fontSize: 12, marginBottom: 4 }}>Played {playedAt}</p>
+            {players.length > 0 && (
+              <p style={{ color: 'var(--clr-text-faint)', fontSize: 11, marginBottom: 24 }}>
+                {players.map(p => `${p.display_name} (${p.color})`).join(' vs ')}
+              </p>
+            )}
+            <p style={{ color: 'var(--clr-text-faint)', fontSize: 11, marginBottom: 28 }}>
+              Replay data lives in the game server's memory and wasn't available — the server may have restarted.
+            </p>
+            <button style={{ background: 'var(--clr-blue)', color: 'var(--clr-bg)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, letterSpacing: 1, padding: '12px 28px', borderRadius: 4, border: 'none', cursor: 'pointer', width: '100%' }} onClick={() => navigate('/')}>
+              Play New Game
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  const overlay = renderOverlay()
+  if (overlay) return overlay
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 8, minHeight: '100vh', background: 'var(--clr-bg)' }}>
 
@@ -590,9 +665,9 @@ export default function Game() {
 
       {/* Strategy input / review — below the canvas */}
       <div style={{ width: '100%', maxWidth: 660 }}>
-        {goneError ? (
+        {goneError && !resolution ? (
           <div style={{ color: 'var(--clr-text-dim)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
-            {gameState ? 'This game has ended.' : 'Game not found.'}{' '}
+            This game has ended.{' '}
             <button style={{ color: 'var(--clr-blue)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }} onClick={() => navigate('/')}>
               New game →
             </button>
