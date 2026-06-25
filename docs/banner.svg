@@ -48,16 +48,9 @@
 
   <text
     x="413"
-    y="248"
+    y="252"
     font-family="'Courier New', Courier, monospace"
     font-size="17"
     letter-spacing="0.5"
-    fill="#3a6080">A cellular automaton where your only weapon</text>
-  <text
-    x="413"
-    y="273"
-    font-family="'Courier New', Courier, monospace"
-    font-size="17"
-    letter-spacing="0.5"
-    fill="#3a6080">is a plain-English strategy.</text>
+    fill="#3a6080">Two colonies. One battle. Your only weapon is plain English.</text>
 </svg>

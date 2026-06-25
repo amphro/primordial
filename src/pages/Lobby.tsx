@@ -42,7 +42,7 @@ export default function Lobby() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 40 }}>
-          A cellular automaton where your only weapon is a plain-English strategy.
+          Two colonies. One battle. Your only weapon is plain English.
         </p>
 
         <button

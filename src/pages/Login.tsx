@@ -53,7 +53,7 @@ export default function Login() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', marginBottom: 40, fontSize: 13, letterSpacing: 1 }}>
-          A cellular automaton where your only weapon is a plain-English strategy.
+          Two colonies. One battle. Your only weapon is plain English.
         </p>
 
         <button
