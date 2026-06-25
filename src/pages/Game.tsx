@@ -75,6 +75,7 @@ export default function Game() {
   const [myStrategy, setMyStrategy] = useState<Strategy | null>(null)
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [myTokenUsage, setMyTokenUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null)
 
   // Refs — avoid stale closures inside animation timer
   const myColorRef         = useRef<'blue' | 'red' | undefined>(undefined)
@@ -327,6 +328,7 @@ export default function Game() {
       if (m.color === myColorRef.current && m.strategy) {
         setMyStrategy(m.strategy)
         setEditing(false)
+        if (m.tokenUsage) setMyTokenUsage(m.tokenUsage)
       }
     }
 
@@ -583,6 +585,7 @@ export default function Game() {
               submitted={false}
               myReadback={myReadback}
               opponentLocked={opponentLocked}
+              tokenUsage={myTokenUsage}
             />
           ) : myStrategy ? (
             <StrategyReview
@@ -600,6 +603,7 @@ export default function Game() {
               submitted={true}
               myReadback={myReadback}
               opponentLocked={opponentLocked}
+              tokenUsage={myTokenUsage}
             />
           )
         ) : (

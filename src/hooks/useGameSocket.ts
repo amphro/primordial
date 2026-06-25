@@ -32,6 +32,7 @@ export interface StrategyLockedMsg {
   readback: string
   strategy?: Strategy
   latencyMs: number
+  tokenUsage?: { promptTokens: number; completionTokens: number } | null
 }
 
 export interface ResolutionMsg extends GameResolution {
