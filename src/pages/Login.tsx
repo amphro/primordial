@@ -4,14 +4,28 @@ import { s } from '../lib/styles'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 
+const ADJS  = ['amber', 'azure', 'bold', 'coral', 'cyan', 'dusk', 'ember', 'fern', 'gold', 'jade', 'neon', 'rose', 'rust', 'sage', 'teal', 'void', 'wild']
+const NOUNS = ['bear', 'crane', 'crow', 'drake', 'falcon', 'fox', 'hawk', 'hare', 'lynx', 'moth', 'raven', 'shark', 'stag', 'swift', 'viper', 'wolf', 'wren']
+
+function guestName(): string {
+  let id = ''
+  try {
+    id = localStorage.getItem('guestId') ?? ''
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('guestId', id) }
+  } catch { id = crypto.randomUUID() }
+  const hex = id.replace(/-/g, '')
+  const n1 = parseInt(hex.slice(0, 4), 16) % ADJS.length
+  const n2 = parseInt(hex.slice(4, 8), 16) % NOUNS.length
+  return `${ADJS[n1]}${NOUNS[n2]}`
+}
+
 export default function Login() {
   const { refresh } = useAuth()
-  const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function quickJoin() {
-    if (!name.trim()) { setError('Enter a name'); return }
+  async function play() {
+    if (loading) return
     setLoading(true)
     setError('')
     try {
@@ -19,13 +33,12 @@ export default function Login() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: guestName() }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) throw new Error('Server error')
       await refresh()
     } catch {
-      setError('Something went wrong')
-    } finally {
+      setError('Could not connect — make sure the server is running.')
       setLoading(false)
     }
   }
@@ -40,33 +53,18 @@ export default function Login() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', marginBottom: 40, fontSize: 13, letterSpacing: 1 }}>
-          A cellular battle of wills.
+          A cellular automaton where your only weapon is a plain-English strategy.
         </p>
 
-        {/* Quick join — always shown for now, remove once Google auth is configured */}
-        <div style={{ marginBottom: 24 }}>
-          <label style={s.label}>Your name</label>
-          <input
-            style={s.input}
-            placeholder="Enter a name to play"
-            value={name}
-            maxLength={32}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && quickJoin()}
-            autoFocus
-          />
-        </div>
         <button
-          style={{ ...s.primaryButton, width: '100%', marginBottom: 32 }}
-          onClick={quickJoin}
+          style={{ ...s.primaryButton, width: '100%', marginBottom: 16 }}
+          onClick={play}
           disabled={loading}
         >
-          {loading ? 'Joining...' : 'Play'}
+          {loading ? 'Joining…' : 'Play'}
         </button>
 
         {error && <p style={{ color: 'var(--clr-error)', fontSize: 12, marginBottom: 16 }}>{error}</p>}
-
-        <div style={{ color: 'var(--clr-text-faint)', fontSize: 11, letterSpacing: 2, marginBottom: 20 }}>— OR —</div>
 
         <a href="/auth/google" style={{ ...s.ghostButton, width: '100%', display: 'block', textAlign: 'center' }}>
           Sign in with Google
