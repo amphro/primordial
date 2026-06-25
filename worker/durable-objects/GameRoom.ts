@@ -28,6 +28,7 @@ interface ConnectedPlayer {
 
 export class GameRoom extends DurableObject<Env> {
   private players = new Map<string, ConnectedPlayer>()
+  private viewers = new Map<string, WebSocket>()  // guests — receive broadcasts, not in player list
   // Ephemeral pending locks — prevent double-submit across concurrent requests during await
   private strategyBluePending = false
   private strategyRedPending  = false
@@ -376,7 +377,7 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
   private handleWebSocket(request: Request): Response {
     const userId      = request.headers.get('X-User-Id') ?? ''
     const displayName = request.headers.get('X-Display-Name') ?? 'Player'
-    const headerColor = request.headers.get('X-Player-Color') as 'blue' | 'red' | null
+    const headerColor = request.headers.get('X-Player-Color') as 'blue' | 'red' | ''
 
     if (!userId) return new Response('Unauthorized', { status: 401 })
 
@@ -384,13 +385,32 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket]
     server.accept()
 
-    let color: 'blue' | 'red'
-    if (headerColor === 'blue' || headerColor === 'red') {
-      color = headerColor
-    } else {
-      const existingColors = new Set([...this.players.values()].map(p => p.color))
-      color = existingColors.has('blue') ? 'red' : 'blue'
+    // Guests (no color) are passive viewers — they receive state but don't appear in the player list
+    if (headerColor !== 'blue' && headerColor !== 'red') {
+      this.viewers.set(userId, server)
+
+      server.send(JSON.stringify(this.buildStateMsg()))
+      if (this.resolution) {
+        server.send(JSON.stringify({ type: 'resolution', ...this.resolution }))
+      }
+      if (this.phase === 'finished' && this.resolution) {
+        server.send(JSON.stringify({
+          type: 'game_over',
+          winner: this.resolution.winner,
+          winReason: 'rounds',
+          scores: this.resolution.finalScores,
+        }))
+      }
+
+      server.addEventListener('close', () => {
+        if (this.viewers.get(userId) !== server) return
+        this.viewers.delete(userId)
+      })
+
+      return new Response(null, { status: 101, webSocket: client } as ResponseInit & { webSocket: WebSocket })
     }
+
+    const color = headerColor
     this.players.set(userId, { ws: server, userId, displayName, color })
 
     server.send(JSON.stringify(this.buildStateMsg()))
@@ -512,6 +532,9 @@ ${question ? `Question: ${question}` : 'In under 200 words: why did the winner w
       if (userId !== excludeUserId) {
         try { player.ws.send(data) } catch { /* disconnected */ }
       }
+    }
+    for (const [, ws] of this.viewers) {
+      try { ws.send(data) } catch { /* disconnected */ }
     }
   }
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
-import { HOW_TO_PLAY_URL } from '../lib/links'
+import { DOCS_URL, HOW_TO_PLAY_URL } from '../lib/links'
 
 export default function Lobby() {
   const { user } = useAuth()
@@ -42,7 +42,7 @@ export default function Lobby() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 40 }}>
-          A cellular battle of wills.
+          A cellular automaton where your only weapon is a plain-English strategy.
         </p>
 
         <button
@@ -61,9 +61,14 @@ export default function Lobby() {
           <p style={{ color: 'var(--clr-text-faint)', fontSize: 11, marginBottom: 8 }}>
             Experimental hobby project — use at your own risk.
           </p>
-          <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
-            How to play →
-          </a>
+          <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
+            <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              How to play →
+            </a>
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              How it works →
+            </a>
+          </div>
         </div>
       </div>
     </div>

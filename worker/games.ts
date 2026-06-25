@@ -9,6 +9,16 @@ interface Env {
 
 export async function handleGames(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
+
+  // WebSocket: public route — guests get read-only replay access without auth
+  const wsMatch = url.pathname.match(/^\/api\/games\/([A-Z0-9]{6})\/ws$/)
+  if (wsMatch && request.method === 'GET') {
+    const token = getSessionToken(request)
+    const session = token ? await verifySession(token, env.SESSION_SECRET) : null
+    return upgradeWebSocket(wsMatch[1], request, env, session)
+  }
+
+  // All other routes require auth
   const session = await requireSession(request, env)
   if (session instanceof Response) return session
 
@@ -26,7 +36,6 @@ export async function handleGames(request: Request, env: Env): Promise<Response>
   if (request.method === 'POST' && sub === '/join') return joinGame(code, env, session)
   if (request.method === 'POST' && sub === '/add-bot') return addBot(code, env, session)
   if (request.method === 'POST' && sub === '/start') return startGame(code, env, session)
-  if (request.method === 'GET' && sub === '/ws') return upgradeWebSocket(code, request, env, session)
   if (request.method === 'POST' && sub === '/strategy') return submitStrategy(code, request, env, session)
   if (request.method === 'POST' && sub === '/confirm')  return confirmStrategy(code, env, session)
   if (request.method === 'POST' && sub === '/analyze') return analyzeGame(code, request, env)
@@ -147,17 +156,30 @@ async function startGame(code: string, env: Env, session: SessionPayload): Promi
   return json({ started: true })
 }
 
-async function upgradeWebSocket(code: string, request: Request, env: Env, session: SessionPayload): Promise<Response> {
+async function upgradeWebSocket(code: string, request: Request, env: Env, session: SessionPayload | null): Promise<Response> {
   const game = await env.DB.prepare('SELECT status FROM games WHERE code = ?').bind(code).first<{ status: string }>()
   if (!game) return error('Game not found', 404)
   // Don't gate on 'finished' here — let the DO send a game_over message so the client
   // can navigate to the proper GameOver screen rather than showing a raw error banner.
 
-  // Look up the player's color from D1 so the DO uses the canonical assignment
-  // rather than assigning by connection order (which flips on reconnect).
-  const playerRow = await env.DB.prepare('SELECT color FROM game_players WHERE game_code = ? AND user_id = ?')
-    .bind(code, session.userId).first<{ color: string }>()
-  const playerColor = playerRow?.color ?? ''
+  let userId: string
+  let displayName: string
+  let playerColor: string
+
+  if (session) {
+    // Look up the player's color from D1 so the DO uses the canonical assignment
+    // rather than assigning by connection order (which flips on reconnect).
+    const playerRow = await env.DB.prepare('SELECT color FROM game_players WHERE game_code = ? AND user_id = ?')
+      .bind(code, session.userId).first<{ color: string }>()
+    userId = session.userId
+    displayName = session.displayName
+    playerColor = playerRow?.color ?? ''
+  } else {
+    // Unauthenticated viewer — read-only replay access; color is empty so DO routes to viewers
+    userId = `guest-${crypto.randomUUID().slice(0, 8)}`
+    displayName = 'Viewer'
+    playerColor = ''
+  }
 
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
@@ -166,8 +188,8 @@ async function upgradeWebSocket(code: string, request: Request, env: Env, sessio
   const doRequest = new Request(request.url, {
     headers: {
       ...Object.fromEntries(request.headers),
-      'X-User-Id': session.userId,
-      'X-Display-Name': session.displayName,
+      'X-User-Id': userId,
+      'X-Display-Name': displayName,
       'X-Player-Color': playerColor,
     },
     body: request.body,

@@ -405,7 +405,7 @@ export default function Game() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Logo size={18} />
           <span className="section-label">PRIMORDIAL</span>
-          <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-muted)', fontSize: 10, textDecoration: 'none', marginLeft: 4 }}>guide</a>
+          <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-blue)', fontSize: 10, textDecoration: 'underline', marginLeft: 4 }}>guide</a>
         </span>
         <span style={{ fontSize: 11 }}>
           <span className="text-muted">{code} · </span>
@@ -591,8 +591,8 @@ export default function Game() {
       {/* Strategy input / review — below the canvas */}
       <div style={{ width: '100%', maxWidth: 660 }}>
         {goneError ? (
-          <div style={{ color: 'var(--clr-red)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
-            This game has ended.{' '}
+          <div style={{ color: 'var(--clr-text-dim)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
+            {gameState ? 'This game has ended.' : 'Game not found.'}{' '}
             <button style={{ color: 'var(--clr-blue)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }} onClick={() => navigate('/')}>
               New game →
             </button>
