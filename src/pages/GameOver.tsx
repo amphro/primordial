@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { s } from '../lib/styles'
+import ThemeToggle from '../components/ThemeToggle'
 
 async function startNewGame(navigate: ReturnType<typeof useNavigate>, setLoading: (b: boolean) => void) {
   setLoading(true)
@@ -39,7 +40,7 @@ export default function GameOver() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<string | null>(null)
 
-  const color = state.winner === 'blue' ? '#4a9eff' : state.winner === 'red' ? '#ff6b4a' : '#8a9aaa'
+  const color = state.winner === 'blue' ? 'var(--clr-blue)' : state.winner === 'red' ? 'var(--clr-red)' : 'var(--clr-text-muted)'
   const label = state.winner ? `${state.winner.toUpperCase()} WINS` : 'GAME OVER'
 
   const rounds = state.rounds ?? []
@@ -102,9 +103,12 @@ export default function GameOver() {
   return (
     <div style={s.center}>
       <div style={{ ...s.card, maxWidth: 480 }}>
-        <h1 style={{ fontSize: 28, letterSpacing: 6, color, marginBottom: 12 }}>{label}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <h1 style={{ fontSize: 28, letterSpacing: 6, color }}>{label}</h1>
+          <ThemeToggle />
+        </div>
         {state.scores && (
-          <p style={{ color: '#5a7a9a', fontSize: 13, marginBottom: 24 }}>
+          <p style={{ color: 'var(--clr-text-dim)', fontSize: 13, marginBottom: 24 }}>
             Blue {state.scores.blue}% · Red {state.scores.red}%
           </p>
         )}
@@ -112,7 +116,7 @@ export default function GameOver() {
         {/* Round recap */}
         {topRounds.length > 0 && (
           <div style={{ marginBottom: 28 }}>
-            <p style={{ color: '#2a4a6a', fontSize: 10, letterSpacing: 2, marginBottom: 12 }}>KEY ROUNDS</p>
+            <p style={{ color: 'var(--clr-text-muted)', fontSize: 10, letterSpacing: 2, marginBottom: 12 }}>KEY ROUNDS</p>
             {topRounds.map(r => (
               <div key={r.round} style={{
                 display: 'flex',
@@ -120,25 +124,25 @@ export default function GameOver() {
                 alignItems: 'center',
                 padding: '8px 12px',
                 marginBottom: 6,
-                background: '#0d1a2a',
-                border: '1px solid #1e3050',
+                background: 'var(--clr-surface-raised)',
+                border: '1px solid var(--clr-border-hi)',
                 borderRadius: 4,
                 fontSize: 12,
               }}>
-                <span style={{ color: '#3a5a7a', minWidth: 28 }}>R{r.round}</span>
-                <span style={{ color: '#8a9aaa', flex: 1, textAlign: 'left' }}>
+                <span style={{ color: 'var(--clr-text-dim)', minWidth: 28 }}>R{r.round}</span>
+                <span style={{ color: 'var(--clr-text-muted)', flex: 1, textAlign: 'left' }}>
                   {r.myAction} {r.myZone}
                 </span>
                 <span style={{
-                  color: r.myDelta >= 0 ? '#00cc66' : '#ff6b4a',
+                  color: r.myDelta >= 0 ? 'var(--clr-green)' : 'var(--clr-red)',
                   fontWeight: 'bold',
                   minWidth: 52,
                   textAlign: 'right',
                 }}>
                   {fmtDelta(r.myDelta)} cells
                 </span>
-                <span style={{ color: '#2a3a4a', margin: '0 8px' }}>vs</span>
-                <span style={{ color: '#6a7a8a', flex: 1, textAlign: 'right' }}>
+                <span style={{ color: 'var(--clr-text-faint)', margin: '0 8px' }}>vs</span>
+                <span style={{ color: 'var(--clr-text-dim)', flex: 1, textAlign: 'right' }}>
                   opp {r.oppAction}
                 </span>
               </div>
@@ -171,16 +175,16 @@ export default function GameOver() {
         </div>
 
         {analyzeOpen && (
-          <div style={{ marginTop: 20, borderTop: '1px solid #1e3050', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ color: '#4a6a8a', fontSize: 11, letterSpacing: 1, margin: 0 }}>ASK THE AI</p>
+          <div style={{ marginTop: 20, borderTop: '1px solid var(--clr-border-hi)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: 'var(--clr-text-dim)', fontSize: 11, letterSpacing: 1, margin: 0 }}>ASK THE AI</p>
             <textarea
               value={analyzeQuestion}
               onChange={e => setAnalyzeQuestion(e.target.value)}
               placeholder="Why did I lose? Was my strategy correct? (leave blank for auto-analysis)"
               rows={2}
               style={{
-                background: '#0d1a2a', border: '1px solid #1e3050', borderRadius: 4,
-                color: '#c0d0e0', fontSize: 13, padding: '8px 10px', resize: 'none',
+                background: 'var(--clr-surface-raised)', border: '1px solid var(--clr-border-hi)', borderRadius: 4,
+                color: 'var(--clr-text)', fontSize: 13, padding: '8px 10px', resize: 'none',
                 fontFamily: 'inherit', lineHeight: 1.5,
               }}
             />
@@ -193,8 +197,8 @@ export default function GameOver() {
             </button>
             {analysis && (
               <div style={{
-                background: '#0a1520', border: '1px solid #1e3050', borderRadius: 4,
-                padding: '12px 14px', color: '#a0b8cc', fontSize: 13, lineHeight: 1.7,
+                background: 'var(--clr-surface)', border: '1px solid var(--clr-border-hi)', borderRadius: 4,
+                padding: '12px 14px', color: 'var(--clr-text-secondary)', fontSize: 13, lineHeight: 1.7,
                 whiteSpace: 'pre-wrap',
               }}>
                 {analysis}

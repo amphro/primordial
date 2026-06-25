@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import Logo from '../components/Logo'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Login() {
   const { refresh } = useAuth()
@@ -32,10 +33,13 @@ export default function Login() {
   return (
     <div style={s.center}>
       <div style={s.card}>
-        <h1 style={{ fontSize: 32, letterSpacing: 8, color: '#4a9eff', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Logo size={38} />PRIMORDIAL
-        </h1>
-        <p style={{ color: '#3a5a7a', marginBottom: 40, fontSize: 13, letterSpacing: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <h1 style={{ fontSize: 32, letterSpacing: 8, color: 'var(--clr-blue)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Logo size={38} />PRIMORDIAL
+          </h1>
+          <ThemeToggle />
+        </div>
+        <p style={{ color: 'var(--clr-text-muted)', marginBottom: 40, fontSize: 13, letterSpacing: 1 }}>
           A cellular battle of wills.
         </p>
 
@@ -60,9 +64,9 @@ export default function Login() {
           {loading ? 'Joining...' : 'Play'}
         </button>
 
-        {error && <p style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>{error}</p>}
+        {error && <p style={{ color: 'var(--clr-error)', fontSize: 12, marginBottom: 16 }}>{error}</p>}
 
-        <div style={{ color: '#2a3a4a', fontSize: 11, letterSpacing: 2, marginBottom: 20 }}>— OR —</div>
+        <div style={{ color: 'var(--clr-text-faint)', fontSize: 11, letterSpacing: 2, marginBottom: 20 }}>— OR —</div>
 
         <a href="/auth/google" style={{ ...s.ghostButton, width: '100%', display: 'block', textAlign: 'center' }}>
           Sign in with Google

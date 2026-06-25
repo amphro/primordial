@@ -8,6 +8,7 @@ import StatusBar from '../components/StatusBar'
 import ScoreBar from '../components/ScoreBar'
 import StrategyInput from '../components/PromptInput'
 import StrategyReview from '../components/StrategyReview'
+import ThemeToggle from '../components/ThemeToggle'
 import { makeRng } from '@shared/rng'
 import { initGrid, simulateTick } from '@shared/sim/simulation'
 import type { GridState } from '@shared/sim/simulation'
@@ -372,10 +373,9 @@ export default function Game() {
   const displayRound = animRound < 0 ? 0 : animRound + 1
   const isAnimating  = resolution !== null && animRound < (resolution.rounds.length - 1)
 
-  const accentBlue = '#4a9eff'
-  const accentRed  = '#ff6b4a'
-  const myAccent   = myColor === 'blue' ? accentBlue : myColor === 'red' ? accentRed : '#8a9aaa'
-  const oppAccent  = oppColor === 'blue' ? accentBlue : accentRed
+  // CSS var strings — used in JSX style props (not canvas renderer)
+  const myAccent   = myColor === 'blue' ? 'var(--clr-blue)' : myColor === 'red' ? 'var(--clr-red)' : 'var(--clr-text-muted)'
+  const oppAccent  = oppColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-red)'
 
   function fmtDelta(prev: number, next: number): string {
     const d = next - prev
@@ -383,7 +383,7 @@ export default function Game() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 8, minHeight: '100vh', background: '#080c14' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 8, minHeight: '100vh', background: 'var(--clr-bg)' }}>
 
       {/* Header */}
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -397,16 +397,16 @@ export default function Game() {
           <span style={{ color: connected ? 'var(--clr-green)' : 'var(--clr-text-muted)' }}>{connected ? '● live' : '○ connecting'}</span>
         </span>
         {/* Speed controls — visible during animation */}
-        {resolution && (
+        {resolution ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {SPEEDS.map(s => (
               <button
                 key={s}
                 onClick={() => changeSpeed(s)}
                 style={{
-                  background: speed === s ? '#1a3050' : 'transparent',
-                  border: `1px solid ${speed === s ? '#4a9eff' : '#1e3050'}`,
-                  color: speed === s ? '#4a9eff' : 'var(--clr-text-muted)',
+                  background: speed === s ? 'var(--clr-btn-active-bg)' : 'transparent',
+                  border: `1px solid ${speed === s ? 'var(--clr-blue)' : 'var(--clr-border-hi)'}`,
+                  color: speed === s ? 'var(--clr-blue)' : 'var(--clr-text-muted)',
                   fontFamily: 'monospace',
                   fontSize: 11,
                   padding: '2px 7px',
@@ -420,12 +420,14 @@ export default function Game() {
             {isAnimating && (
               <button
                 onClick={skipToEnd}
-                style={{ background: 'transparent', border: '1px solid #1e3050', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '2px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
+                style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '2px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
               >
                 skip »
               </button>
             )}
           </div>
+        ) : (
+          <ThemeToggle />
         )}
       </div>
 
@@ -481,11 +483,11 @@ export default function Game() {
               const myNow   = myColor  === 'blue' ? entry.blueCells : entry.redCells
               const oppNow  = oppColor === 'blue' ? entry.blueCells : entry.redCells
               return (
-                <div key={entry.round} style={{ background: '#0a1420', border: '1px solid #1a2a3a', borderRadius: 3, padding: '5px 8px' }}>
+                <div key={entry.round} style={{ background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', borderRadius: 3, padding: '5px 8px' }}>
                   <div className="text-sec" style={{ fontSize: 12, marginBottom: 3 }}>Round {entry.round + 1}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Tooltip text={`${ACTION_DESC[mySpec.action] ?? mySpec.action}\n\nRule: ${myColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: myAccent, fontSize: 12, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent + '60' }}>{mySpec.action}</span>
+                      <span style={{ color: myAccent, fontSize: 12, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent }}>{mySpec.action}</span>
                     </Tooltip>
                     <span style={{ color: (myNow - myPrev) >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 12, fontWeight: 'bold', marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(myPrev, myNow) : `${myNow}`}
@@ -494,7 +496,7 @@ export default function Game() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <span className="text-muted" style={{ fontSize: 11 }}>vs </span>
                     <Tooltip text={`${ACTION_DESC[oppSpec.action] ?? oppSpec.action}\n\nRule: ${oppColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: oppAccent, fontSize: 11, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent + '60' }}>{oppSpec.action}</span>
+                      <span style={{ color: oppAccent, fontSize: 11, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent }}>{oppSpec.action}</span>
                     </Tooltip>
                     <span style={{ color: (oppNow - oppPrev) >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 11, marginLeft: 'auto' }}>
                       {prevEntry ? fmtDelta(oppPrev, oppNow) : `${oppNow}`}
@@ -510,13 +512,13 @@ export default function Game() {
 
       {/* Live caption */}
       {liveCaption && resolution && (
-        <div style={{ width: '100%', maxWidth: 660, background: '#0a1420', border: '1px solid #1a2a3a', borderRadius: 4, padding: '8px 14px' }}>
+        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', borderRadius: 4, padding: '8px 14px' }}>
           <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1, color: accentBlue, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ flex: 1, color: 'var(--clr-blue)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <span className="text-dim" style={{ fontSize: 11, marginRight: 6 }}>BLUE</span>
               {liveCaption.blueTrace}
             </div>
-            <div style={{ flex: 1, color: accentRed, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
+            <div style={{ flex: 1, color: 'var(--clr-red)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
               {liveCaption.redTrace}
               <span className="text-dim" style={{ fontSize: 11, marginLeft: 6 }}>RED</span>
             </div>
@@ -526,9 +528,9 @@ export default function Game() {
 
       {/* Result banner — shown when animation ends, stays on board */}
       {gameFinished && gameOverData && (
-        <div style={{ width: '100%', maxWidth: 660, background: '#0a1420', border: `1px solid ${gameOverData.winner === myColor ? '#1a5a2a' : '#5a1a1a'}`, borderRadius: 6, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: `1px solid ${gameOverData.winner === myColor ? 'var(--clr-win-border)' : 'var(--clr-lose-border)'}`, borderRadius: 6, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === myColor ? '#00cc66' : '#ff6b4a', letterSpacing: 2 }}>
+            <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
               {gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
             </div>
             <div className="text-muted" style={{ fontSize: 12, marginTop: 3 }}>
@@ -537,7 +539,7 @@ export default function Game() {
           </div>
           <button
             onClick={gotoResults}
-            style={{ background: '#0d2035', border: '1px solid #2a5a8a', color: '#4a9eff', fontFamily: 'inherit', fontSize: 12, padding: '8px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+            style={{ background: 'var(--clr-btn-accent-surface)', border: '1px solid var(--clr-btn-accent-border)', color: 'var(--clr-blue)', fontFamily: 'inherit', fontSize: 12, padding: '8px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
           >
             See Results →
           </button>
@@ -546,13 +548,13 @@ export default function Game() {
 
       {/* Board events panel — shown during strategy phase */}
       {!resolution && gameState?.events && gameState.events.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 660, background: '#06090f', border: '1px solid #1a2a3a', borderRadius: 4, padding: '8px 12px' }}>
+        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface-deep)', border: '1px solid var(--clr-border)', borderRadius: 4, padding: '8px 12px' }}>
           <div className="section-label" style={{ marginBottom: 6 }}>BOARD EVENTS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {gameState.events.map((ev, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, fontFamily: 'monospace' }}>
                 <span className="text-muted" style={{ minWidth: 26 }}>R{ev.round + 1}</span>
-                <span style={{ color: ev.kind === 'nutrient_bloom' ? '#a0c840' : '#c88040' }}>
+                <span style={{ color: ev.kind === 'nutrient_bloom' ? 'var(--clr-event-bloom)' : 'var(--clr-event-drought)' }}>
                   {ev.kind === 'nutrient_bloom' ? '⬡ Nutrient Bloom' : '☀ Drought'}
                 </span>
                 <span className="text-dim">{ev.zone !== 'ALL' ? ev.zone.toLowerCase() : 'all zones'}</span>
@@ -566,9 +568,9 @@ export default function Game() {
       {/* Strategy input / review — below the canvas */}
       <div style={{ width: '100%', maxWidth: 660 }}>
         {goneError ? (
-          <div style={{ color: '#ff6b4a', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ color: 'var(--clr-red)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
             This game has ended.{' '}
-            <button style={{ color: '#4a9eff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }} onClick={() => navigate('/')}>
+            <button style={{ color: 'var(--clr-blue)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }} onClick={() => navigate('/')}>
               New game →
             </button>
           </div>
@@ -601,7 +603,7 @@ export default function Game() {
             />
           )
         ) : (
-          <div style={{ color: '#5a7a9a', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ color: 'var(--clr-text-dim)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
             {connected ? 'Joining game…' : 'Connecting…'}
           </div>
         )}
@@ -611,23 +613,23 @@ export default function Game() {
       <div style={{ width: '100%', maxWidth: 660 }}>
         <button
           onClick={() => setDevOpen(o => !o)}
-          style={{ background: 'none', border: 'none', color: '#1a2a3a', fontSize: 9, cursor: 'pointer', padding: '4px 0', fontFamily: 'monospace', letterSpacing: 1 }}
+          style={{ background: 'none', border: 'none', color: 'var(--clr-text-faint)', fontSize: 9, cursor: 'pointer', padding: '4px 0', fontFamily: 'monospace', letterSpacing: 1 }}
         >
           {devOpen ? '▲' : '▼'} dev
         </button>
         {devOpen && (
-          <div style={{ background: '#06090f', border: '1px solid #1a2a3a', borderRadius: 4, padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ background: 'var(--clr-surface-deep)', border: '1px solid var(--clr-border)', borderRadius: 4, padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ color: 'var(--clr-text-dim)' }}>code:</span>
-              <button onClick={() => void navigator.clipboard.writeText(code ?? '')} style={{ color: '#4a9eff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'monospace', fontSize: 11, padding: 0 }}>
+              <button onClick={() => void navigator.clipboard.writeText(code ?? '')} style={{ color: 'var(--clr-blue)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'monospace', fontSize: 11, padding: 0 }}>
                 {code} ⎘
               </button>
               <span style={{ color: 'var(--clr-text-dim)' }}>seed: <span style={{ color: 'var(--clr-text-muted)' }}>{gameState?.seed ?? 0}</span></span>
-              <span style={{ color: '#2a6a4a' }}>blue: <span style={{ color: '#4a9eff' }}>{blueCount}</span></span>
-              <span style={{ color: '#6a2a2a' }}>red: <span style={{ color: '#ff6b4a' }}>{redCount}</span></span>
+              <span style={{ color: 'var(--clr-text-dim)' }}>blue: <span style={{ color: 'var(--clr-blue)' }}>{blueCount}</span></span>
+              <span style={{ color: 'var(--clr-text-dim)' }}>red: <span style={{ color: 'var(--clr-red)' }}>{redCount}</span></span>
             </div>
             {resolution && (
-              <div style={{ borderTop: '1px solid #1a2a3a', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ borderTop: '1px solid var(--clr-border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ color: 'var(--clr-text-dim)' }}>v{resolution.simVersion} · {resolution.rounds.length} rounds · {SPEED_LABEL[speed]}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ color: 'var(--clr-blue-dim)' }}>blue: {resolution.blueStrategy.rules.length} rules</div>
@@ -635,19 +637,19 @@ export default function Game() {
                 </div>
                 {/* Round scrubber — only when game is finished (all rounds known) */}
                 {gameFinished && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid #1a2a3a', paddingTop: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid var(--clr-border)', paddingTop: 4 }}>
                     <button
                       onClick={() => jumpToRound(Math.max(0, animRound - 1))}
                       disabled={animRound <= 0}
-                      style={{ background: 'none', border: '1px solid #1e3050', color: animRound > 0 ? '#4a9eff' : '#1a2a3a', fontFamily: 'monospace', fontSize: 13, padding: '1px 8px', borderRadius: 3, cursor: animRound > 0 ? 'pointer' : 'default' }}
+                      style={{ background: 'none', border: '1px solid var(--clr-border-hi)', color: animRound > 0 ? 'var(--clr-blue)' : 'var(--clr-border)', fontFamily: 'monospace', fontSize: 13, padding: '1px 8px', borderRadius: 3, cursor: animRound > 0 ? 'pointer' : 'default' }}
                     >◀</button>
-                    <span style={{ color: '#4a7aaa', fontSize: 10, minWidth: 70, textAlign: 'center' }}>
+                    <span style={{ color: 'var(--clr-text-dim)', fontSize: 10, minWidth: 70, textAlign: 'center' }}>
                       Round {animRound + 1} / {resolution.rounds.length}
                     </span>
                     <button
                       onClick={() => jumpToRound(Math.min(resolution.rounds.length - 1, animRound + 1))}
                       disabled={animRound >= resolution.rounds.length - 1}
-                      style={{ background: 'none', border: '1px solid #1e3050', color: animRound < resolution.rounds.length - 1 ? '#4a9eff' : '#1a2a3a', fontFamily: 'monospace', fontSize: 13, padding: '1px 8px', borderRadius: 3, cursor: animRound < resolution.rounds.length - 1 ? 'pointer' : 'default' }}
+                      style={{ background: 'none', border: '1px solid var(--clr-border-hi)', color: animRound < resolution.rounds.length - 1 ? 'var(--clr-blue)' : 'var(--clr-border)', fontFamily: 'monospace', fontSize: 13, padding: '1px 8px', borderRadius: 3, cursor: animRound < resolution.rounds.length - 1 ? 'pointer' : 'default' }}
                     >▶</button>
                     <span style={{ color: 'var(--clr-text-dim)', fontSize: 10, marginLeft: 4 }}>scrub rounds</span>
                   </div>
@@ -661,14 +663,14 @@ export default function Game() {
               </div>
             )}
             {gameState?.strategyReadback?.blue && (
-              <div style={{ borderTop: '1px solid #1a2a3a', paddingTop: 6 }}>
+              <div style={{ borderTop: '1px solid var(--clr-border)', paddingTop: 6 }}>
                 <div style={{ color: 'var(--clr-blue-dim)', fontSize: 10 }}>blue: {gameState.strategyReadback.blue}</div>
                 <div style={{ color: 'var(--clr-red-dim)', fontSize: 10 }}>red: {gameState.strategyReadback.red}</div>
               </div>
             )}
             {/* Strategy JSON — collapsible per side */}
             {resolution && (
-              <div style={{ borderTop: '1px solid #1a2a3a', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ borderTop: '1px solid var(--clr-border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {(['blue', 'red'] as const).map(side => {
                   const strat = side === 'blue' ? resolution.blueStrategy : resolution.redStrategy
                   const json  = JSON.stringify(strat, null, 2)
@@ -681,7 +683,7 @@ export default function Game() {
                           copy ⎘
                         </button>
                       </summary>
-                      <pre style={{ margin: '6px 0 0 8px', color: side === 'blue' ? 'var(--clr-blue-dim)' : 'var(--clr-red-dim)', fontSize: 10, lineHeight: 1.5, overflowX: 'auto', background: '#040810', padding: 8, borderRadius: 3 }}>
+                      <pre style={{ margin: '6px 0 0 8px', color: side === 'blue' ? 'var(--clr-blue-dim)' : 'var(--clr-red-dim)', fontSize: 10, lineHeight: 1.5, overflowX: 'auto', background: 'var(--clr-code-bg)', padding: 8, borderRadius: 3 }}>
                         {json}
                       </pre>
                     </details>
@@ -695,7 +697,7 @@ export default function Game() {
                     seed:         resolution.seed,
                     config:       resolution.config,
                   }})}
-                  style={{ alignSelf: 'flex-start', background: '#0a1a2a', border: '1px solid #2a4a6a', color: '#4a9eff', fontFamily: 'inherit', fontSize: 10, padding: '4px 12px', borderRadius: 3, cursor: 'pointer', letterSpacing: 1, marginTop: 2 }}
+                  style={{ alignSelf: 'flex-start', background: 'var(--clr-btn-accent-surface)', border: '1px solid var(--clr-btn-accent-border)', color: 'var(--clr-blue)', fontFamily: 'inherit', fontSize: 10, padding: '4px 12px', borderRadius: 3, cursor: 'pointer', letterSpacing: 1, marginTop: 2 }}
                 >
                   Clone → Dev Lab
                 </button>

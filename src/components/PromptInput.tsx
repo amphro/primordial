@@ -42,7 +42,7 @@ export default function StrategyInput({ gameCode, myColor, submitted, myReadback
     // Don't set submitting=false on success — the strategy_locked WS message will update state
   }
 
-  const accentColor = myColor === 'blue' ? '#4a9eff' : '#ff6b4a'
+  const accentColor = myColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-red)'
 
   if (submitted) {
     return (
@@ -50,12 +50,12 @@ export default function StrategyInput({ gameCode, myColor, submitted, myReadback
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
           <span style={{ color: accentColor, fontSize: 13, letterSpacing: 1 }}>Strategy locked</span>
-          <span style={{ color: '#2a3a4a', fontSize: 11, marginLeft: 'auto' }}>
+          <span style={{ color: 'var(--clr-text-faint)', fontSize: 11, marginLeft: 'auto' }}>
             {opponentLocked ? '· opponent ready' : '· waiting for opponent'}
           </span>
         </div>
         {myReadback && (
-          <div style={{ paddingLeft: 18, color: '#4a6a8a', fontSize: 12, fontStyle: 'italic' }}>
+          <div style={{ paddingLeft: 18, color: 'var(--clr-text-dim)', fontSize: 12, fontStyle: 'italic' }}>
             "{myReadback}"
           </div>
         )}
@@ -93,11 +93,11 @@ export default function StrategyInput({ gameCode, myColor, submitted, myReadback
           {submitting ? 'Thinking…' : 'Set Strategy'}
         </button>
       </div>
-      <div style={{ color: '#4a6a8a', fontSize: 11, lineHeight: 1.6 }}>
+      <div style={{ color: 'var(--clr-text-dim)', fontSize: 11, lineHeight: 1.6 }}>
         ARMOR counters PULSE &nbsp;·&nbsp; HUNT bypasses ARMOR &nbsp;·&nbsp; GROW eats nutrients to multiply.
         You don't know what your opponent will do — set your rules, then start the battle.
       </div>
-      {error && <p style={{ color: '#ff6b6b', fontSize: 12, margin: 0 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--clr-error)', fontSize: 12, margin: 0 }}>{error}</p>}
     </div>
   )
 }
