@@ -76,6 +76,7 @@ export default function Game() {
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [myTokenUsage, setMyTokenUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null)
+  const [replayCount, setReplayCount] = useState(0)
 
   // Refs — avoid stale closures inside animation timer
   const myColorRef         = useRef<'blue' | 'red' | undefined>(undefined)
@@ -206,7 +207,18 @@ export default function Game() {
     finishGame()
   }
 
+  function replay() {
+    setGameFinished(false)
+    setLiveCaption(null)
+    animRoundRef.current = -1
+    setAnimRound(-1)
+    roundHistoryRef.current = []
+    setRoundHistory([])
+    setReplayCount(c => c + 1)
+  }
+
   // Start animating when resolution arrives — uses recursive setTimeout so speed changes mid-animation
+  // replayCount in deps so replay() re-triggers this effect
   useEffect(() => {
     if (!resolution) return
     resolutionRef.current = resolution
@@ -291,7 +303,8 @@ export default function Game() {
 
     animTimerRef.current = setTimeout(step, BASE_INTERVAL_MS / speedRef.current)
     return () => clearAnimTimer()
-  }, [resolution, playAction])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolution, replayCount, playAction])
 
   const onMessage = useCallback((msg: GameMsg) => {
     if (msg.type === 'state') {
@@ -539,12 +552,20 @@ export default function Game() {
               Blue {gameOverData.scores.blue}% · Red {gameOverData.scores.red}%
             </div>
           </div>
-          <button
-            onClick={gotoResults}
-            style={{ background: 'var(--clr-btn-accent-surface)', border: '1px solid var(--clr-btn-accent-border)', color: 'var(--clr-blue)', fontFamily: 'inherit', fontSize: 12, padding: '8px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
-          >
-            See Results →
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={replay}
+              style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 12, padding: '8px 14px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+            >
+              ↺ Replay
+            </button>
+            <button
+              onClick={gotoResults}
+              style={{ background: 'var(--clr-btn-accent-surface)', border: '1px solid var(--clr-btn-accent-border)', color: 'var(--clr-blue)', fontFamily: 'inherit', fontSize: 12, padding: '8px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+            >
+              See Results →
+            </button>
+          </div>
         </div>
       )}
 
