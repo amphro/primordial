@@ -17,12 +17,11 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/" element={user ? <Lobby /> : <Navigate to="/login" replace />} />
-      <Route path="/game/:code/wait" element={user ? <WaitingRoom /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={user ? <Lobby /> : <Login />} />
+      <Route path="/game/:code/wait" element={user ? <WaitingRoom /> : <Navigate to="/" replace />} />
       <Route path="/game/:code" element={<Game />} />
       <Route path="/game/:code/over" element={<GameOver />} />
-      <Route path="/dev/run" element={user ? <DevRun /> : <Navigate to="/login" replace />} />
+      <Route path="/dev/run" element={user ? <DevRun /> : <Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
