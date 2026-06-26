@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Cell patterns: 28×28 cell, 34px step, origin (3,3) -->
+    <pattern id="blueGrid" x="3" y="3" width="34" height="34" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" rx="4" fill="#4a9eff"/>
+    </pattern>
+    <pattern id="redGrid" x="3" y="3" width="34" height="34" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" rx="4" fill="#ff6b4a"/>
+    </pattern>
+    <pattern id="emptyGrid" x="3" y="3" width="34" height="34" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" rx="4" fill="#0d1520"/>
+    </pattern>
+
+    <!-- Blue territory: full left 25%, fades to 0 at 43% -->
+    <linearGradient id="blueG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"  stop-color="white" stop-opacity="1"/>
+      <stop offset="25%" stop-color="white" stop-opacity="1"/>
+      <stop offset="43%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="blueMask">
+      <rect width="1440" height="400" fill="url(#blueG)"/>
+    </mask>
+
+    <!-- Red territory: mirror — full right 25%, fades to 0 at 43% from right -->
+    <linearGradient id="redG" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%"  stop-color="white" stop-opacity="1"/>
+      <stop offset="25%" stop-color="white" stop-opacity="1"/>
+      <stop offset="43%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="redMask">
+      <rect width="1440" height="400" fill="url(#redG)"/>
+    </mask>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1440" height="400" fill="#080c14"/>
+
+  <!-- Empty cell grid (subtle texture across entire board) -->
+  <rect width="1440" height="400" fill="url(#emptyGrid)" opacity="0.3"/>
+
+  <!-- Blue territory (left, fading toward center) -->
+  <rect width="1440" height="400" fill="url(#blueGrid)" mask="url(#blueMask)" opacity="0.75"/>
+
+  <!-- Red territory (right, fading toward center) -->
+  <rect width="1440" height="400" fill="url(#redGrid)" mask="url(#redMask)" opacity="0.75"/>
+
+  <!-- Nutrients in the contested center zone -->
+  <!-- Grid: cell center = 3 + col*34 + 14 = 17 + col*34 -->
+  <!-- Center col 21 (x=731), rows 2,5,8 (y=85,187,289) -->
+  <circle cx="731" cy="187" r="19" fill="#c8a840" opacity="0.9"/>
+  <circle cx="731" cy="187" r="11" fill="#e8c860"/>
+
+  <circle cx="629" cy="85"  r="14" fill="#c8a840" opacity="0.75"/>
+  <circle cx="629" cy="85"  r="8"  fill="#e8c860"/>
+
+  <circle cx="833" cy="289" r="14" fill="#c8a840" opacity="0.75"/>
+  <circle cx="833" cy="289" r="8"  fill="#e8c860"/>
+
+  <circle cx="697" cy="289" r="12" fill="#c8a840" opacity="0.65"/>
+  <circle cx="697" cy="289" r="7"  fill="#e8c860"/>
+
+  <circle cx="765" cy="85"  r="12" fill="#c8a840" opacity="0.65"/>
+  <circle cx="765" cy="85"  r="7"  fill="#e8c860"/>
+
+  <!-- Overall darkening so white text remains readable -->
+  <rect width="1440" height="400" fill="#080c14" opacity="0.3"/>
+</svg>

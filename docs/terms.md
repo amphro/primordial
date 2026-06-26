@@ -2,7 +2,7 @@
 title: Terms of Service — PRIMORDIAL
 ---
 
-[← Back](index.md)
+[← Back](../)
 
 # Terms of Service
 
