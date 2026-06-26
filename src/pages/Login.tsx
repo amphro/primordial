@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
+import { DOCS_URL } from '../lib/links'
 
 const ADJS  = ['amber', 'azure', 'bold', 'coral', 'cyan', 'dusk', 'ember', 'fern', 'gold', 'jade', 'neon', 'rose', 'rust', 'sage', 'teal', 'void', 'wild']
 const NOUNS = ['bear', 'crane', 'crow', 'drake', 'falcon', 'fox', 'hawk', 'hare', 'lynx', 'moth', 'raven', 'shark', 'stag', 'swift', 'viper', 'wolf', 'wren']
@@ -71,6 +72,8 @@ export default function Login() {
         </a>
 
         <p style={{ marginTop: 24, fontSize: 11, color: 'var(--clr-text-faint)', textAlign: 'center' }}>
+          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', textDecoration: 'none' }}>Guide</a>
+          {' · '}
           <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', textDecoration: 'none' }}>Terms</a>
           {' · '}
           <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', textDecoration: 'none' }}>Privacy</a>
