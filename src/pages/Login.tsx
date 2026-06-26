@@ -53,7 +53,7 @@ export default function Login() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', marginBottom: 40, fontSize: 13, letterSpacing: 1 }}>
-          A cellular automaton where your only weapon is a plain-English strategy.
+          Two colonies. One battle. Your only weapon is plain English.
         </p>
 
         <button
@@ -69,6 +69,12 @@ export default function Login() {
         <a href="/auth/google" style={{ ...s.ghostButton, width: '100%', display: 'block', textAlign: 'center' }}>
           Sign in with Google
         </a>
+
+        <p style={{ marginTop: 24, fontSize: 11, color: 'var(--clr-text-faint)', textAlign: 'center' }}>
+          <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', textDecoration: 'none' }}>Terms</a>
+          {' · '}
+          <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', textDecoration: 'none' }}>Privacy</a>
+        </p>
       </div>
     </div>
   )

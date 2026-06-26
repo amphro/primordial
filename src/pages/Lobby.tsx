@@ -42,7 +42,7 @@ export default function Lobby() {
           <ThemeToggle />
         </div>
         <p style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 40 }}>
-          A cellular automaton where your only weapon is a plain-English strategy.
+          Two colonies. One battle. Your only weapon is plain English.
         </p>
 
         <button
@@ -67,6 +67,12 @@ export default function Lobby() {
             </a>
             <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
               How it works →
+            </a>
+            <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              Terms
+            </a>
+            <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
+              Privacy
             </a>
           </div>
         </div>
