@@ -2,8 +2,6 @@
 title: How to Play — PRIMORDIAL
 ---
 
-[← Back](index.md)
-
 # How to Play
 
 ## The flow

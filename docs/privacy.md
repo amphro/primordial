@@ -2,7 +2,7 @@
 title: Privacy Policy — PRIMORDIAL
 ---
 
-[← Back](index.md)
+[← Back](../)
 
 # Privacy Policy
 

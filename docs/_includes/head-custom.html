@@ -1,4 +1,5 @@
 <link rel="icon" href="{{ '/favicon.svg' | relative_url }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ '/assets/css/custom.css' | relative_url }}">
 <meta property="og:image" content="{{ '/banner.svg' | absolute_url }}">
-<meta property="og:title" content="PRIMORDIAL">
+<meta property="og:title" content="{{ page.title | default: site.title }}">
 <meta property="og:description" content="{{ site.description }}">

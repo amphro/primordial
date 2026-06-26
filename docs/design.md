@@ -2,8 +2,6 @@
 title: Design — PRIMORDIAL
 ---
 
-[← Back](index.md)
-
 # Design
 
 ## The idea
@@ -30,16 +28,10 @@ The question the game asks: *can you predict the future well enough to win it wi
 
 ## The tech
 
-The simulation (`shared/sim/simulation.ts`) is pure deterministic code: seeded RNG (mulberry32), no floats that differ across environments. It runs identically on the server (authoritative result) and on the client (animation-only replay). The server result always wins.
-
-Hosted entirely on Cloudflare: Workers for the API, Durable Objects for per-game WebSocket and state, D1 for persistence, Workers AI for strategy generation.
+Hosted entirely on Cloudflare: Workers for the API, Durable Objects for per-game WebSocket and state, D1 for persistence, Workers AI for strategy generation. The simulation is deterministic — seeded RNG, no floats that differ across environments — and runs identically on the server (authoritative result) and client (animation replay).
 
 ---
 
 ## Goal
 
 Ship one finished, playable thing. Not a platform. Not a framework. A game that runs, ends, and is worth playing again.
-
----
-
-**[How to play](how-to-play.md)** · **[Terms](terms.md)** · **[Privacy](privacy.md)**
