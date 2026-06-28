@@ -138,7 +138,7 @@ export default function Game() {
       }
     })
     navigateFn.current(`/game/${codeRef.current}/over`, {
-      state: { gameCode: codeRef.current, winner: pgo.winner, winReason: pgo.winReason, scores: pgo.scores, rounds },
+      state: { gameCode: codeRef.current, winner: pgo.winner, winReason: pgo.winReason, scores: pgo.scores, rounds, isOwnGame: mc !== undefined },
     })
   }
 

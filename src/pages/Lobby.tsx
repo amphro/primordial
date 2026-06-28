@@ -1,14 +1,18 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import { DOCS_URL, HOW_TO_PLAY_URL } from '../lib/links'
 
+const linkStyle: React.CSSProperties = { color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }
+const faintLinkStyle: React.CSSProperties = { color: 'var(--clr-text-faint)', fontSize: 10, textDecoration: 'none' }
+
 export default function Lobby() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const isGuest = user?.userId?.startsWith('test_')
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
 
@@ -41,39 +45,52 @@ export default function Lobby() {
           </h1>
           <ThemeToggle />
         </div>
-        <p style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 40 }}>
+        <p style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 32 }}>
           Two colonies. One battle. Your only weapon is plain English.
         </p>
 
-        <button
-          style={{ ...s.primaryButton, width: '100%' }}
-          onClick={startGame}
-          disabled={starting}
-        >
-          {starting ? 'Starting…' : 'Start Game (vs Computer)'}
-        </button>
-
-        {error && (
-          <p style={{ color: 'var(--clr-error)', fontSize: 12, marginTop: 16 }}>{error}</p>
+        {/* Start button or spinner while creating the game */}
+        {starting ? (
+          <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="spinner" />
+          </div>
+        ) : (
+          <button
+            style={{ ...s.primaryButton, width: '100%' }}
+            onClick={startGame}
+          >
+            Start Game (vs Computer)
+          </button>
         )}
 
-        <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--clr-border)', textAlign: 'center' }}>
-          <p style={{ color: 'var(--clr-text-faint)', fontSize: 11, marginBottom: 8 }}>
-            Experimental hobby project — use at your own risk.
-          </p>
-          <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
-            <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
-              How to play →
+        {error && (
+          <p style={{ color: 'var(--clr-error)', fontSize: 12, marginTop: 12 }}>{error}</p>
+        )}
+
+        {/* Guest nudge — below the CTA so it doesn't compete */}
+        {isGuest && !starting && (
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <div style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 4 }}>
+              Guest mode — your battles live in this browser.
+            </div>
+            <a href="/auth/google" style={{ color: 'var(--clr-blue)', textDecoration: 'none', fontSize: 12 }}>
+              Sign in with Google to keep them anywhere →
             </a>
-            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
-              How it works →
-            </a>
-            <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
-              Terms
-            </a>
-            <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clr-text-dim)', fontSize: 11, textDecoration: 'none' }}>
-              Privacy
-            </a>
+          </div>
+        )}
+
+        {/* Footer nav */}
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid var(--clr-border)', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 10 }}>
+            <Link to="/history" style={linkStyle}>Past games</Link>
+            <a href={HOW_TO_PLAY_URL} target="_blank" rel="noopener noreferrer" style={linkStyle}>How to play</a>
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={linkStyle}>How it works</a>
+          </div>
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'center' }}>
+            <span style={{ color: 'var(--clr-text-faint)', fontSize: 10 }}>Experimental hobby project</span>
+            <span style={{ color: 'var(--clr-text-faint)', fontSize: 10 }}>·</span>
+            <a href="https://amphro.com/terms/" target="_blank" rel="noopener noreferrer" style={faintLinkStyle}>Terms</a>
+            <a href="https://amphro.com/privacy/" target="_blank" rel="noopener noreferrer" style={faintLinkStyle}>Privacy</a>
           </div>
         </div>
       </div>
