@@ -117,6 +117,23 @@
   padding: 8px 12px;
 }
 
+@keyframes shimmer {
+  0%   { opacity: 0.35; }
+  50%  { opacity: 0.6; }
+  100% { opacity: 0.35; }
+}
+.skeleton { animation: shimmer 1.4s ease-in-out infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 26px; height: 26px;
+  border: 3px solid var(--clr-border);
+  border-top-color: var(--clr-blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 9px auto;
+}
+
 .panel-deep {
   background: var(--clr-surface-deep);
   border: 1px solid var(--clr-border);

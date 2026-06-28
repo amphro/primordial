@@ -7,6 +7,24 @@ interface Env {
   SESSION_SECRET: string
 }
 
+const GUEST_DAILY_LIMIT = 10
+const USER_DAILY_LIMIT  = 30
+
+async function checkRateLimit(request: Request, env: Env, session: SessionPayload): Promise<boolean> {
+  const date = new Date().toISOString().slice(0, 10)
+  const isGuest = session.userId.startsWith('test_')
+  const identifier = isGuest
+    ? `ip:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}`
+    : `user:${session.userId}`
+  const limit = isGuest ? GUEST_DAILY_LIMIT : USER_DAILY_LIMIT
+  const key = `ratelimit:${date}:${identifier}`
+
+  const current = Number(await env.KV.get(key) ?? 0)
+  if (current >= limit) return false
+  await env.KV.put(key, String(current + 1), { expirationTtl: 90000 })
+  return true
+}
+
 export async function handleGames(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
 
@@ -24,6 +42,9 @@ export async function handleGames(request: Request, env: Env): Promise<Response>
   const session = await requireSession(request, env)
   if (session instanceof Response) return session
 
+  // GET /api/games — history
+  if (request.method === 'GET' && url.pathname === '/api/games') return listGames(env, session)
+
   // POST /api/games — create
   if (request.method === 'POST' && url.pathname === '/api/games') {
     return createGame(request, env, session)
@@ -40,7 +61,7 @@ export async function handleGames(request: Request, env: Env): Promise<Response>
   if (request.method === 'POST' && sub === '/start') return startGame(code, env, session)
   if (request.method === 'POST' && sub === '/strategy') return submitStrategy(code, request, env, session)
   if (request.method === 'POST' && sub === '/confirm')  return confirmStrategy(code, env, session)
-  if (request.method === 'POST' && sub === '/analyze') return analyzeGame(code, request, env)
+  if (request.method === 'POST' && sub === '/analyze') return analyzeGame(code, request, env, session)
   if (request.method === 'POST' && sub === '/finish') return finishGame(code, env, session)
   if (request.method === 'POST' && sub === '/errors') return logClientError(code, request, env)
 
@@ -212,6 +233,17 @@ async function submitStrategy(code: string, request: Request, env: Env, session:
   const game = await env.DB.prepare('SELECT status FROM games WHERE code = ?').bind(code).first<{ status: string }>()
   if (!game || game.status !== 'active') return error('Game not active', 409)
 
+  const allowed = await checkRateLimit(request, env, session)
+  if (!allowed) {
+    const isGuest = session.userId.startsWith('test_')
+    return error(
+      isGuest
+        ? 'Daily strategy limit reached. Log in with Google to keep playing.'
+        : 'Daily strategy limit reached. Try again tomorrow.',
+      429,
+    )
+  }
+
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
   return stub.fetch(new Request('http://do/strategy', {
@@ -257,9 +289,20 @@ async function finishGame(code: string, env: Env, session: SessionPayload): Prom
   return json({ finished: true })
 }
 
-async function analyzeGame(code: string, request: Request, env: Env): Promise<Response> {
+async function analyzeGame(code: string, request: Request, env: Env, session: SessionPayload): Promise<Response> {
   const game = await env.DB.prepare('SELECT 1 FROM games WHERE code = ?').bind(code).first()
   if (!game) return error('Game not found', 404)
+
+  const allowed = await checkRateLimit(request, env, session)
+  if (!allowed) {
+    const isGuest = session.userId.startsWith('test_')
+    return error(
+      isGuest
+        ? 'Daily analysis limit reached. Log in with Google to keep playing.'
+        : 'Daily analysis limit reached. Try again tomorrow.',
+      429,
+    )
+  }
 
   const id = env.GAME_ROOM.idFromName(code)
   const stub = env.GAME_ROOM.get(id)
@@ -268,6 +311,25 @@ async function analyzeGame(code: string, request: Request, env: Env): Promise<Re
     headers: { 'Content-Type': 'application/json' },
     body: request.body,
   }))
+}
+
+async function listGames(env: Env, session: SessionPayload): Promise<Response> {
+  const rows = await env.DB.prepare(`
+    SELECT
+      g.code,
+      g.winner_id,
+      g.finished_at,
+      gp.color AS my_color,
+      u2.display_name AS opponent_name
+    FROM games g
+    JOIN game_players gp ON gp.game_code = g.code AND gp.user_id = ?
+    LEFT JOIN game_players gp2 ON gp2.game_code = g.code AND gp2.user_id != gp.user_id
+    LEFT JOIN users u2 ON u2.id = gp2.user_id
+    WHERE g.status = 'finished'
+    ORDER BY g.finished_at DESC
+    LIMIT 20
+  `).bind(session.userId).all()
+  return json({ games: rows.results })
 }
 
 // ---- helpers ----

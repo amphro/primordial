@@ -3,12 +3,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import Login from './pages/Login'
 import Lobby from './pages/Lobby'
 import WaitingRoom from './pages/WaitingRoom'
 import Game from './pages/Game'
 import GameOver from './pages/GameOver'
 import DevRun from './pages/DevRun'
+import History from './pages/History'
 import NotFound from './pages/NotFound'
 
 function AppRoutes() {
@@ -17,10 +17,11 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={user ? <Lobby /> : <Login />} />
+      <Route path="/" element={<Lobby />} />
       <Route path="/game/:code/wait" element={user ? <WaitingRoom /> : <Navigate to="/" replace />} />
       <Route path="/game/:code" element={<Game />} />
       <Route path="/game/:code/over" element={<GameOver />} />
+      <Route path="/history" element={user ? <History /> : <Navigate to="/" replace />} />
       <Route path="/dev/run" element={user ? <DevRun /> : <Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

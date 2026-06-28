@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { s } from '../lib/styles'
 import ThemeToggle from '../components/ThemeToggle'
 
@@ -27,12 +28,15 @@ interface LocationState {
   winReason?: string
   scores?: { blue: number; red: number }
   rounds?: RoundEntry[]
+  isOwnGame?: boolean
 }
 
 export default function GameOver() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const state = (location.state as LocationState) ?? {}
+  const isGuest = user?.userId?.startsWith('test_')
   const [copied, setCopied] = useState(false)
   const [newGameLoading, setNewGameLoading] = useState(false)
   const [analyzeOpen, setAnalyzeOpen] = useState(false)
@@ -204,6 +208,18 @@ export default function GameOver() {
                 {analysis}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Guest nudge — only for players in their own game, not replay viewers */}
+        {isGuest && state.isOwnGame && (
+          <div style={{ marginTop: 28, textAlign: 'center' }}>
+            <div style={{ color: 'var(--clr-text-muted)', fontSize: 12, marginBottom: 4 }}>
+              This battle will vanish if you clear this browser.
+            </div>
+            <a href="/auth/google" style={{ color: 'var(--clr-blue)', textDecoration: 'none', fontSize: 12 }}>
+              Sign in with Google to keep your war log →
+            </a>
           </div>
         )}
 
