@@ -13,12 +13,12 @@ function Num({ value, prev, color, max = 4 }: { value: number; prev: number | nu
   const pos = delta !== null && delta > 0
   const neg = delta !== null && delta < 0
   return (
-    <>
+    <span style={{ whiteSpace: 'nowrap' }}>
       <span style={{ display: 'inline-block', minWidth: `${max}ch`, textAlign: 'right', color }}>{value}</span>
-      <span style={{ display: 'inline-block', minWidth: '5ch', textAlign: 'right', fontSize: 11, visibility: (pos || neg) ? 'visible' : 'hidden', color: pos ? 'var(--clr-pos)' : 'var(--clr-neg)' }}>
+      <span style={{ display: 'inline-block', minWidth: '4ch', textAlign: 'right', fontSize: 11, visibility: (pos || neg) ? 'visible' : 'hidden', color: pos ? 'var(--clr-pos)' : 'var(--clr-neg)' }}>
         {delta !== null ? (delta > 0 ? `+${delta}` : `${delta}`) : '+0'}
       </span>
-    </>
+    </span>
   )
 }
 
@@ -28,18 +28,13 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
   const { blueCells: blue, redCells: red, totalNutrients: nuts } = current
   const prevBlue = previous?.blueCells ?? null
   const prevRed  = previous?.redCells  ?? null
-  const prevNuts = previous?.totalNutrients ?? null
-
-  const total = blue + red
-  const bluePct = total === 0 ? 50 : Math.round(blue / total * 100)
-  const redPct  = 100 - bluePct
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       gap: 6,
-      padding: '5px 10px',
+      padding: '5px 8px',
       background: 'var(--clr-surface)',
       border: '1px solid var(--clr-border)',
       borderRadius: 4,
@@ -47,41 +42,37 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
       fontSize: 12,
       fontFamily: 'monospace',
       userSelect: 'none',
-      whiteSpace: 'nowrap',
+      overflowX: 'auto',
     }}>
       {/* Blue cells */}
-      <span>
+      <span style={{ whiteSpace: 'nowrap' }}>
         <span style={{ color: 'var(--clr-blue)', fontWeight: myColor === 'blue' ? 700 : 400 }}>▪ </span>
         <Num value={blue} prev={prevBlue} color={myColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-blue-dim)'} />
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> (<span style={{ display: 'inline-block', minWidth: '3ch', textAlign: 'right' }}>{bluePct}</span>%)</span>
       </span>
 
-      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)', flexShrink: 0 }}>│</span>
 
-      {/* Nutrients */}
-      <span>
-        <span style={{ color: 'var(--clr-nutrient)', fontSize: 11 }}>⬡ </span>
-        <Num value={nuts} prev={prevNuts} color='var(--clr-nutrient)' max={3} />
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> nut</span>
+      {/* Nutrients — count only, no delta (changes less dramatically) */}
+      <span style={{ whiteSpace: 'nowrap', color: 'var(--clr-nutrient)' }}>
+        <span style={{ fontSize: 11 }}>⬡ </span>
+        <span style={{ display: 'inline-block', minWidth: '3ch', textAlign: 'right' }}>{nuts}</span>
       </span>
 
-      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)', flexShrink: 0 }}>│</span>
 
-      {/* Power resources */}
-      <span style={{ color: 'var(--clr-power)' }}>
+      {/* Power — compact, no label */}
+      <span style={{ whiteSpace: 'nowrap', color: 'var(--clr-power)' }}>
         ◆ <span style={{ color: 'var(--clr-blue)', display: 'inline-block', minWidth: '2ch', textAlign: 'right' }}>{blueResources}</span>
-        <span style={{ color: 'var(--clr-text-dim)', margin: '0 2px' }}>╱</span>
+        <span style={{ color: 'var(--clr-text-dim)', margin: '0 1px' }}>╱</span>
         <span style={{ color: 'var(--clr-red)', display: 'inline-block', minWidth: '2ch' }}>{redResources}</span>
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> pwr</span>
       </span>
 
-      <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
+      <span style={{ color: 'var(--clr-text-dim)', flexShrink: 0 }}>│</span>
 
       {/* Red cells */}
-      <span>
+      <span style={{ whiteSpace: 'nowrap' }}>
         <span style={{ color: 'var(--clr-red)', fontWeight: myColor === 'red' ? 700 : 400 }}>▪ </span>
         <Num value={red} prev={prevRed} color={myColor === 'red' ? 'var(--clr-red)' : 'var(--clr-red-dim)'} />
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> (<span style={{ display: 'inline-block', minWidth: '3ch', textAlign: 'right' }}>{redPct}</span>%)</span>
       </span>
     </div>
   )

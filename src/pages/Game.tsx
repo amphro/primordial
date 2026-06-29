@@ -656,7 +656,7 @@ export default function Game() {
 
       {/* Sticky result footer — shown when animation ends */}
       {gameFinished && gameOverData && (
-        <div className="result-footer">
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, background: 'var(--clr-card)', borderTop: '1px solid var(--clr-border-hi)', padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: gameOverData.winner === 'tie' ? 'var(--clr-text-muted)' : gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
               {gameOverData.winner === 'tie' ? 'TIE' : gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
