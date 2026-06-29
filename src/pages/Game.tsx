@@ -576,11 +576,13 @@ export default function Game() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
               <span className="text-muted" style={{ fontSize: 11, minWidth: 32, flexShrink: 0 }}>R{last.round + 1}</span>
               <span style={{ color: myAccent, fontSize: 13, fontWeight: 600 }}>{mySpec.action}</span>
+              <span className="text-dim" style={{ fontSize: 10 }}>{mySpec.zone.toLowerCase()}</span>
               <span style={{ color: myDelta >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 13, fontWeight: 700, minWidth: 36 }}>
                 {prev ? (myDelta >= 0 ? `+${myDelta}` : `${myDelta}`) : `${myNow}`}
               </span>
               <span className="text-dim" style={{ fontSize: 11, margin: '0 4px' }}>vs</span>
               <span style={{ color: oppAccent, fontSize: 12 }}>{oppSpec.action}</span>
+              <span className="text-dim" style={{ fontSize: 10 }}>{oppSpec.zone.toLowerCase()}</span>
               <span style={{ color: oppDelta >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 12, minWidth: 36 }}>
                 {prev ? (oppDelta >= 0 ? `+${oppDelta}` : `${oppDelta}`) : `${oppNow}`}
               </span>
@@ -631,11 +633,13 @@ export default function Game() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: myAccent, fontSize: 12, fontWeight: 600 }}>{mySpec.action}</span>
+                        <span className="text-dim" style={{ fontSize: 10 }}>{mySpec.zone.toLowerCase()}</span>
                         <span style={{ color: myD >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 12, fontWeight: 700 }}>
                           {prevE ? (myD >= 0 ? `+${myD}` : `${myD}`) : `${myNow}`}
                         </span>
                         <span className="text-dim" style={{ fontSize: 10 }}>vs</span>
                         <span style={{ color: oppAccent, fontSize: 11 }}>{oppSpec.action}</span>
+                        <span className="text-dim" style={{ fontSize: 10 }}>{oppSpec.zone.toLowerCase()}</span>
                         <span style={{ color: oppD >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 11 }}>
                           {prevE ? (oppD >= 0 ? `+${oppD}` : `${oppD}`) : `${oppNow}`}
                         </span>

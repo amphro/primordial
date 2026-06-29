@@ -8,21 +8,27 @@ interface Props {
   redResources?: number
 }
 
-function deltaColor(d: number): string {
-  return d > 0 ? 'var(--clr-pos)' : 'var(--clr-neg)'
-}
-
-function deltaStr(d: number): string {
-  return d > 0 ? `+${d}` : `${d}`
+function Num({ value, prev, color, max = 4 }: { value: number; prev: number | null; color: string; max?: number }) {
+  const delta = prev !== null ? value - prev : null
+  const pos = delta !== null && delta > 0
+  const neg = delta !== null && delta < 0
+  return (
+    <>
+      <span style={{ display: 'inline-block', minWidth: `${max}ch`, textAlign: 'right', color }}>{value}</span>
+      <span style={{ display: 'inline-block', minWidth: '5ch', textAlign: 'right', fontSize: 11, visibility: (pos || neg) ? 'visible' : 'hidden', color: pos ? 'var(--clr-pos)' : 'var(--clr-neg)' }}>
+        {delta !== null ? (delta > 0 ? `+${delta}` : `${delta}`) : '+0'}
+      </span>
+    </>
+  )
 }
 
 export default function StatusBar({ current, previous, myColor, blueResources = 0, redResources = 0 }: Props) {
   if (!current) return null
 
   const { blueCells: blue, redCells: red, totalNutrients: nuts } = current
-  const dBlue = previous !== null ? blue - previous.blueCells         : null
-  const dRed  = previous !== null ? red  - previous.redCells          : null
-  const dNuts = previous !== null ? nuts - previous.totalNutrients    : null
+  const prevBlue = previous?.blueCells ?? null
+  const prevRed  = previous?.redCells  ?? null
+  const prevNuts = previous?.totalNutrients ?? null
 
   const total = blue + red
   const bluePct = total === 0 ? 50 : Math.round(blue / total * 100)
@@ -32,7 +38,7 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
       padding: '5px 10px',
       background: 'var(--clr-surface)',
       border: '1px solid var(--clr-border)',
@@ -41,46 +47,41 @@ export default function StatusBar({ current, previous, myColor, blueResources = 
       fontSize: 12,
       fontFamily: 'monospace',
       userSelect: 'none',
+      whiteSpace: 'nowrap',
     }}>
-      <span style={{ color: myColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-blue-dim)', minWidth: 90 }}>
+      {/* Blue cells */}
+      <span>
         <span style={{ color: 'var(--clr-blue)', fontWeight: myColor === 'blue' ? 700 : 400 }}>▪ </span>
-        {blue}
-        {dBlue !== null && dBlue !== 0 && (
-          <span style={{ color: deltaColor(dBlue), fontSize: 11 }}> {deltaStr(dBlue)}</span>
-        )}
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> ({bluePct}%)</span>
+        <Num value={blue} prev={prevBlue} color={myColor === 'blue' ? 'var(--clr-blue)' : 'var(--clr-blue-dim)'} />
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> (<span style={{ display: 'inline-block', minWidth: '3ch', textAlign: 'right' }}>{bluePct}</span>%)</span>
       </span>
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: 'var(--clr-nutrient)', minWidth: 70 }}>
-        <span style={{ fontSize: 11 }}>⬡ </span>
-        {nuts}
-        {dNuts !== null && dNuts !== 0 && (
-          <span style={{ color: deltaColor(dNuts), fontSize: 11 }}> {deltaStr(dNuts)}</span>
-        )}
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> nuts</span>
+      {/* Nutrients */}
+      <span>
+        <span style={{ color: 'var(--clr-nutrient)', fontSize: 11 }}>⬡ </span>
+        <Num value={nuts} prev={prevNuts} color='var(--clr-nutrient)' max={3} />
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> nut</span>
       </span>
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: 'var(--clr-power)', minWidth: 80, fontSize: 12 }}>
-        <span>◆ </span>
-        <span style={{ color: 'var(--clr-blue)' }}>{blueResources}</span>
-        <span style={{ color: 'var(--clr-text-dim)', margin: '0 3px' }}>╱</span>
-        <span style={{ color: 'var(--clr-red)' }}>{redResources}</span>
+      {/* Power resources */}
+      <span style={{ color: 'var(--clr-power)' }}>
+        ◆ <span style={{ color: 'var(--clr-blue)', display: 'inline-block', minWidth: '2ch', textAlign: 'right' }}>{blueResources}</span>
+        <span style={{ color: 'var(--clr-text-dim)', margin: '0 2px' }}>╱</span>
+        <span style={{ color: 'var(--clr-red)', display: 'inline-block', minWidth: '2ch' }}>{redResources}</span>
         <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> pwr</span>
       </span>
 
       <span style={{ color: 'var(--clr-text-dim)' }}>│</span>
 
-      <span style={{ color: myColor === 'red' ? 'var(--clr-red)' : 'var(--clr-red-dim)', minWidth: 90 }}>
+      {/* Red cells */}
+      <span>
         <span style={{ color: 'var(--clr-red)', fontWeight: myColor === 'red' ? 700 : 400 }}>▪ </span>
-        {red}
-        {dRed !== null && dRed !== 0 && (
-          <span style={{ color: deltaColor(dRed), fontSize: 11 }}> {deltaStr(dRed)}</span>
-        )}
-        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> ({redPct}%)</span>
+        <Num value={red} prev={prevRed} color={myColor === 'red' ? 'var(--clr-red)' : 'var(--clr-red-dim)'} />
+        <span style={{ color: 'var(--clr-text-muted)', fontSize: 11 }}> (<span style={{ display: 'inline-block', minWidth: '3ch', textAlign: 'right' }}>{redPct}</span>%)</span>
       </span>
     </div>
   )
