@@ -17,7 +17,6 @@ import { SIM_VERSION } from '@shared/sim/runGame'
 import { applyBoardEvent } from '@shared/sim/events'
 import type { Strategy } from '@shared/strategy'
 import Logo from '../components/Logo'
-import Tooltip from '../components/Tooltip'
 import { HOW_TO_PLAY_URL } from '../lib/links'
 
 const ACTION_DESC: Record<string, string> = {
@@ -77,6 +76,7 @@ export default function Game() {
   const [confirming, setConfirming] = useState(false)
   const [myTokenUsage, setMyTokenUsage] = useState<{ promptTokens: number; completionTokens: number } | null>(null)
   const [replayCount, setReplayCount] = useState(0)
+  const [roundsExpanded, setRoundsExpanded] = useState(false)
 
   interface GameInfoPlayer { id: string; display_name: string; color: string }
   interface GameInfoRow { code: string; status: string; winner_id: string | null; finished_at: number | null; created_at: number }
@@ -473,7 +473,7 @@ export default function Game() {
   if (overlay) return overlay
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 8, minHeight: '100vh', background: 'var(--clr-bg)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', paddingBottom: gameFinished ? 96 : 16, gap: 8, minHeight: '100vh', background: 'var(--clr-bg)' }}>
 
       {/* Header */}
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -499,7 +499,7 @@ export default function Game() {
                   color: speed === s ? 'var(--clr-blue)' : 'var(--clr-text-muted)',
                   fontFamily: 'monospace',
                   fontSize: 11,
-                  padding: '2px 7px',
+                  padding: '6px 10px',
                   borderRadius: 3,
                   cursor: 'pointer',
                 }}
@@ -510,7 +510,7 @@ export default function Game() {
             {isAnimating && (
               <button
                 onClick={skipToEnd}
-                style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '2px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
+                style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '6px 10px', borderRadius: 3, cursor: 'pointer', marginLeft: 4 }}
               >
                 skip »
               </button>
@@ -535,108 +535,146 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Canvas + sidebar */}
-      <div style={{ width: '100%', maxWidth: 660, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <StatusBar
-            current={roundHistory[roundHistory.length - 1] ?? null}
-            previous={roundHistory[roundHistory.length - 2] ?? null}
-            myColor={myColor ?? null}
-            blueResources={liveBlueResources}
-            redResources={liveRedResources}
-          />
-          <GameCanvas
-            grid={liveGrid}
-            nutrients={liveNutrients}
-            armor={liveArmor}
-            starvation={liveStarvation}
-            toxin={liveToxin}
-            nutrientType={liveNutrientType}
-            anim={resolveAnim}
-            gridW={gridW}
-            gridH={gridH}
-            size={480}
-          />
-        </div>
-
-        {roundHistory.length > 0 && myColor && (
-          <div style={{ flex: '0 0 156px', display: 'flex', flexDirection: 'column' }}>
-            <div className="section-label" style={{ marginBottom: 4 }}>ROUNDS</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 452, overflowY: 'auto', paddingRight: 2 }}>
-            {[...roundHistory].reverse().map(entry => {
-              const mySpec  = myColor  === 'blue' ? entry.blueSpec : entry.redSpec
-              const oppSpec = oppColor === 'blue' ? entry.blueSpec : entry.redSpec
-              const prevIdx = roundHistory.indexOf(entry) - 1
-              const prevEntry = prevIdx >= 0 ? roundHistory[prevIdx] : null
-              const myPrev  = prevEntry ? (myColor  === 'blue' ? prevEntry.blueCells : prevEntry.redCells)  : 0
-              const oppPrev = prevEntry ? (oppColor === 'blue' ? prevEntry.blueCells : prevEntry.redCells) : 0
-              const myNow   = myColor  === 'blue' ? entry.blueCells : entry.redCells
-              const oppNow  = oppColor === 'blue' ? entry.blueCells : entry.redCells
-              return (
-                <div key={entry.round} style={{ background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', borderRadius: 3, padding: '5px 8px' }}>
-                  <div className="text-sec" style={{ fontSize: 12, marginBottom: 3 }}>Round {entry.round + 1}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Tooltip text={`${ACTION_DESC[mySpec.action] ?? mySpec.action}\n\nRule: ${myColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: myAccent, fontSize: 12, cursor: 'help', borderBottom: '1px dotted', borderColor: myAccent }}>{mySpec.action}</span>
-                    </Tooltip>
-                    <span style={{ color: (myNow - myPrev) >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 12, fontWeight: 'bold', marginLeft: 'auto' }}>
-                      {prevEntry ? fmtDelta(myPrev, myNow) : `${myNow}`}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <span className="text-muted" style={{ fontSize: 11 }}>vs </span>
-                    <Tooltip text={`${ACTION_DESC[oppSpec.action] ?? oppSpec.action}\n\nRule: ${oppColor === 'blue' ? entry.blueTrace : entry.redTrace}`} delay={300}>
-                      <span style={{ color: oppAccent, fontSize: 11, cursor: 'help', borderBottom: '1px dotted', borderColor: oppAccent }}>{oppSpec.action}</span>
-                    </Tooltip>
-                    <span style={{ color: (oppNow - oppPrev) >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 11, marginLeft: 'auto' }}>
-                      {prevEntry ? fmtDelta(oppPrev, oppNow) : `${oppNow}`}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-            </div>
-          </div>
-        )}
+      {/* Canvas — full width, no sidebar */}
+      <div style={{ width: '100%', maxWidth: 660 }}>
+        <StatusBar
+          current={roundHistory[roundHistory.length - 1] ?? null}
+          previous={roundHistory[roundHistory.length - 2] ?? null}
+          myColor={myColor ?? null}
+          blueResources={liveBlueResources}
+          redResources={liveRedResources}
+        />
+        <GameCanvas
+          grid={liveGrid}
+          nutrients={liveNutrients}
+          armor={liveArmor}
+          starvation={liveStarvation}
+          toxin={liveToxin}
+          nutrientType={liveNutrientType}
+          anim={resolveAnim}
+          gridW={gridW}
+          gridH={gridH}
+          size={480}
+        />
       </div>
 
-      {/* Live caption */}
-      {liveCaption && resolution && (
-        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', borderRadius: 4, padding: '8px 14px' }}>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1, color: 'var(--clr-blue)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span className="text-dim" style={{ fontSize: 11, marginRight: 6 }}>BLUE</span>
-              {liveCaption.blueTrace}
+      {/* Round strip — current round info, replaces live caption */}
+      {roundHistory.length > 0 && myColor && (() => {
+        const last = roundHistory[roundHistory.length - 1]
+        const prev = roundHistory[roundHistory.length - 2] ?? null
+        const mySpec  = myColor  === 'blue' ? last.blueSpec : last.redSpec
+        const oppSpec = oppColor === 'blue' ? last.blueSpec : last.redSpec
+        const myNow   = myColor  === 'blue' ? last.blueCells : last.redCells
+        const oppNow  = oppColor === 'blue' ? last.blueCells : last.redCells
+        const myPrev  = prev ? (myColor  === 'blue' ? prev.blueCells : prev.redCells) : 0
+        const oppPrev = prev ? (oppColor === 'blue' ? prev.blueCells : prev.redCells) : 0
+        const myDelta = myNow - myPrev
+        const oppDelta = oppNow - oppPrev
+        const trace = myColor === 'blue' ? last.blueTrace : last.redTrace
+        return (
+          <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', borderRadius: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+              <span className="text-muted" style={{ fontSize: 11, minWidth: 32, flexShrink: 0 }}>R{last.round + 1}</span>
+              <span style={{ color: myAccent, fontSize: 13, fontWeight: 600 }}>{mySpec.action}</span>
+              <span className="text-dim" style={{ fontSize: 10 }}>{mySpec.zone.toLowerCase()}</span>
+              <span style={{ color: myDelta >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 13, fontWeight: 700, minWidth: 36 }}>
+                {prev ? (myDelta >= 0 ? `+${myDelta}` : `${myDelta}`) : `${myNow}`}
+              </span>
+              <span className="text-dim" style={{ fontSize: 11, margin: '0 4px' }}>vs</span>
+              <span style={{ color: oppAccent, fontSize: 12 }}>{oppSpec.action}</span>
+              <span className="text-dim" style={{ fontSize: 10 }}>{oppSpec.zone.toLowerCase()}</span>
+              <span style={{ color: oppDelta >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 12, minWidth: 36 }}>
+                {prev ? (oppDelta >= 0 ? `+${oppDelta}` : `${oppDelta}`) : `${oppNow}`}
+              </span>
+              <button
+                onClick={() => setRoundsExpanded(true)}
+                style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 11, padding: '3px 10px', borderRadius: 3, cursor: 'pointer', flexShrink: 0 }}
+              >
+                ↕ {roundHistory.length}
+              </button>
             </div>
-            <div style={{ flex: 1, color: 'var(--clr-red)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
-              {liveCaption.redTrace}
-              <span className="text-dim" style={{ fontSize: 11, marginLeft: 6 }}>RED</span>
+            {trace && (
+              <div style={{ borderTop: '1px solid var(--clr-border)', padding: '5px 12px', fontSize: 10, color: 'var(--clr-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {trace}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Rounds history modal */}
+      {roundsExpanded && myColor && (
+        <div className="rounds-modal-overlay" onClick={() => setRoundsExpanded(false)}>
+          <div className="rounds-modal-sheet" onClick={e => e.stopPropagation()}>
+            <div className="rounds-modal-header">
+              <span className="section-label">ALL ROUNDS</span>
+              <button
+                onClick={() => setRoundsExpanded(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--clr-text-muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}
+                aria-label="Close"
+              >×</button>
+            </div>
+            <div className="rounds-modal-body">
+              {[...roundHistory].reverse().map((entry, listIdx) => {
+                const entryIdx = roundHistory.length - 1 - listIdx
+                const mySpec   = myColor  === 'blue' ? entry.blueSpec : entry.redSpec
+                const oppSpec  = oppColor === 'blue' ? entry.blueSpec : entry.redSpec
+                const prevE    = entryIdx > 0 ? roundHistory[entryIdx - 1] : null
+                const myNow    = myColor  === 'blue' ? entry.blueCells : entry.redCells
+                const oppNow   = oppColor === 'blue' ? entry.blueCells : entry.redCells
+                const myPrev2  = prevE ? (myColor  === 'blue' ? prevE.blueCells : prevE.redCells)  : 0
+                const oppPrev2 = prevE ? (oppColor === 'blue' ? prevE.blueCells : prevE.redCells) : 0
+                const myD = myNow - myPrev2
+                const oppD = oppNow - oppPrev2
+                const myTrace = myColor === 'blue' ? entry.blueTrace : entry.redTrace
+                return (
+                  <div key={entry.round} style={{ borderBottom: '1px solid var(--clr-border)', padding: '8px 4px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span className="text-dim" style={{ fontSize: 11, minWidth: 28, paddingTop: 2 }}>R{entry.round + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: myAccent, fontSize: 12, fontWeight: 600 }}>{mySpec.action}</span>
+                        <span className="text-dim" style={{ fontSize: 10 }}>{mySpec.zone.toLowerCase()}</span>
+                        <span style={{ color: myD >= 0 ? 'var(--clr-pos)' : 'var(--clr-neg)', fontSize: 12, fontWeight: 700 }}>
+                          {prevE ? (myD >= 0 ? `+${myD}` : `${myD}`) : `${myNow}`}
+                        </span>
+                        <span className="text-dim" style={{ fontSize: 10 }}>vs</span>
+                        <span style={{ color: oppAccent, fontSize: 11 }}>{oppSpec.action}</span>
+                        <span className="text-dim" style={{ fontSize: 10 }}>{oppSpec.zone.toLowerCase()}</span>
+                        <span style={{ color: oppD >= 0 ? 'var(--clr-neg)' : 'var(--clr-pos)', fontSize: 11 }}>
+                          {prevE ? (oppD >= 0 ? `+${oppD}` : `${oppD}`) : `${oppNow}`}
+                        </span>
+                      </div>
+                      {myTrace && <div style={{ fontSize: 10, color: 'var(--clr-text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{myTrace}</div>}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Result banner — shown when animation ends, stays on board */}
+      {/* Sticky result footer — shown when animation ends */}
       {gameFinished && gameOverData && (
-        <div style={{ width: '100%', maxWidth: 660, background: 'var(--clr-surface)', border: `1px solid ${gameOverData.winner === 'tie' ? 'var(--clr-border-hi)' : gameOverData.winner === myColor ? 'var(--clr-win-border)' : 'var(--clr-lose-border)'}`, borderRadius: 6, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, background: 'var(--clr-card)', borderTop: '1px solid var(--clr-border-hi)', padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 'bold', color: gameOverData.winner === 'tie' ? 'var(--clr-text-muted)' : gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: gameOverData.winner === 'tie' ? 'var(--clr-text-muted)' : gameOverData.winner === myColor ? 'var(--clr-green)' : 'var(--clr-red)', letterSpacing: 2 }}>
               {gameOverData.winner === 'tie' ? 'TIE' : gameOverData.winner === myColor ? 'YOU WIN' : 'DEFEAT'}
             </div>
-            <div className="text-muted" style={{ fontSize: 12, marginTop: 3 }}>
+            <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
               Blue {gameOverData.scores.blue}% · Red {gameOverData.scores.red}%
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={replay}
-              style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 12, padding: '8px 14px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+              style={{ background: 'transparent', border: '1px solid var(--clr-border-hi)', color: 'var(--clr-text-muted)', fontFamily: 'inherit', fontSize: 12, padding: '10px 14px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
             >
               ↺ Replay
             </button>
             <button
               onClick={gotoResults}
-              style={{ background: 'var(--clr-btn-accent-surface)', border: '1px solid var(--clr-btn-accent-border)', color: 'var(--clr-blue)', fontFamily: 'inherit', fontSize: 12, padding: '8px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+              style={{ background: 'var(--clr-blue)', border: 'none', color: 'var(--clr-bg)', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '10px 18px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
             >
               See Results →
             </button>
@@ -807,7 +845,6 @@ export default function Game() {
         )}
       </div>
 
-      <div style={{ height: 16 }} />
     </div>
   )
 }
